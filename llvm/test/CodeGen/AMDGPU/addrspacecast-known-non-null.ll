@@ -1,5 +1,5 @@
-; RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 -o - %s | FileCheck %s
-; RUN: llc -global-isel -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 -o - %s | FileCheck %s
+; RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 --amdgpu-lower-module-lds-strategy=module -o - %s | FileCheck %s
+; RUN: llc -global-isel -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 --amdgpu-lower-module-lds-strategy=module -o - %s | FileCheck %s
 
 ; Test that a null check is not emitted for lowered addrspacecast
 
@@ -28,7 +28,6 @@ define void @cast_alloca() {
 ; CHECK-LABEL: {{^}}cast_lds_gv:
 ; CHECK: s_getreg_b32 [[GETREG:s[0-9]+]], hwreg(HW_REG_SH_MEM_BASES, 16, 16)
 ; CHECK: s_lshl_b32 [[APERTURE:s[0-9]+]], [[GETREG]], 16
-; CHECK: v_mov_b32_e32 v0, 0
 ; CHECK: v_mov_b32_e32 v1, [[APERTURE]]
 ; CHECK-NOT: v0
 ; CHECK-NOT: v1
