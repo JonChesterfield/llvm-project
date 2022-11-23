@@ -35,13 +35,13 @@ define void @f0() {
 ;
 ; TABLE-LABEL: @f0(
 ; TABLE-NEXT:    [[TMP1:%.*]] = call i32 @llvm.amdgcn.lds.kernel.id()
-; TABLE-NEXT:    [[F0_LDS2:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 1
+; TABLE-NEXT:    [[F0_LDS2:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 1
 ; TABLE-NEXT:    [[TMP2:%.*]] = load i16, i16 addrspace(4)* [[F0_LDS2]], align 2
 ; TABLE-NEXT:    [[TMP3:%.*]] = zext i16 [[TMP2]] to i32
 ; TABLE-NEXT:    [[F0_LDS3:%.*]] = inttoptr i32 [[TMP3]] to i16 addrspace(3)*
 ; TABLE-NEXT:    [[LD:%.*]] = load i16, i16 addrspace(3)* [[F0_LDS3]], align 2
 ; TABLE-NEXT:    [[MUL:%.*]] = mul i16 [[LD]], 3
-; TABLE-NEXT:    [[F0_LDS:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 1
+; TABLE-NEXT:    [[F0_LDS:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 1
 ; TABLE-NEXT:    [[TMP4:%.*]] = load i16, i16 addrspace(4)* [[F0_LDS]], align 2
 ; TABLE-NEXT:    [[TMP5:%.*]] = zext i16 [[TMP4]] to i32
 ; TABLE-NEXT:    [[F0_LDS1:%.*]] = inttoptr i32 [[TMP5]] to i16 addrspace(3)*
@@ -91,13 +91,13 @@ define void @f_both() {
 ;
 ; TABLE-LABEL: @f_both(
 ; TABLE-NEXT:    [[TMP1:%.*]] = call i32 @llvm.amdgcn.lds.kernel.id()
-; TABLE-NEXT:    [[BOTH_LDS2:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 0
+; TABLE-NEXT:    [[BOTH_LDS2:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 0
 ; TABLE-NEXT:    [[TMP2:%.*]] = load i16, i16 addrspace(4)* [[BOTH_LDS2]], align 2
 ; TABLE-NEXT:    [[TMP3:%.*]] = zext i16 [[TMP2]] to i32
 ; TABLE-NEXT:    [[BOTH_LDS3:%.*]] = inttoptr i32 [[TMP3]] to i32 addrspace(3)*
 ; TABLE-NEXT:    [[LD:%.*]] = load i32, i32 addrspace(3)* [[BOTH_LDS3]], align 4
 ; TABLE-NEXT:    [[MUL:%.*]] = mul i32 [[LD]], 4
-; TABLE-NEXT:    [[BOTH_LDS:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 0
+; TABLE-NEXT:    [[BOTH_LDS:%.*]] = getelementptr inbounds [2 x [2 x i16]], [2 x [2 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 0
 ; TABLE-NEXT:    [[TMP4:%.*]] = load i16, i16 addrspace(4)* [[BOTH_LDS]], align 2
 ; TABLE-NEXT:    [[TMP5:%.*]] = zext i16 [[TMP4]] to i32
 ; TABLE-NEXT:    [[BOTH_LDS1:%.*]] = inttoptr i32 [[TMP5]] to i32 addrspace(3)*

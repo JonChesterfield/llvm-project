@@ -26,18 +26,18 @@
 ; The kernel naming pattern and the structs being named after the functions helps verify placement of undef
 ; The remainder are constant expressions into the variable instances checked above
 
-; OPT{LITERAL}: @llvm.amdgcn.lds_offset_table = internal addrspace(4) constant [3 x [4 x i16]] [[4 x i16] [i16 ptrtoint (float addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k01.lds.t, %llvm.amdgcn.kernel.k01.lds.t addrspace(3)* @llvm.amdgcn.kernel.k01.lds, i32 0, i32 2) to i16), i16 ptrtoint (%llvm.amdgcn.kernel.k01.lds.t addrspace(3)* @llvm.amdgcn.kernel.k01.lds to i16), i16 undef, i16 undef], [4 x i16] [i16 undef, i16 ptrtoint (%llvm.amdgcn.kernel.k123.lds.t addrspace(3)* @llvm.amdgcn.kernel.k123.lds to i16), i16 ptrtoint (i64 addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k123.lds.t, %llvm.amdgcn.kernel.k123.lds.t addrspace(3)* @llvm.amdgcn.kernel.k123.lds, i32 0, i32 3) to i16), i16 ptrtoint (i8 addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k123.lds.t, %llvm.amdgcn.kernel.k123.lds.t addrspace(3)* @llvm.amdgcn.kernel.k123.lds, i32 0, i32 1) to i16)], [4 x i16] [i16 undef, i16 undef, i16 ptrtoint (%llvm.amdgcn.kernel.k23.lds.t addrspace(3)* @llvm.amdgcn.kernel.k23.lds to i16), i16 ptrtoint (i8 addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k23.lds.t, %llvm.amdgcn.kernel.k23.lds.t addrspace(3)* @llvm.amdgcn.kernel.k23.lds, i32 0, i32 1) to i16)]]
+; OPT{LITERAL}: @llvm.amdgcn.lds.offset.table = internal addrspace(4) constant [3 x [4 x i16]] [[4 x i16] [i16 ptrtoint (float addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k01.lds.t, %llvm.amdgcn.kernel.k01.lds.t addrspace(3)* @llvm.amdgcn.kernel.k01.lds, i32 0, i32 2) to i16), i16 ptrtoint (%llvm.amdgcn.kernel.k01.lds.t addrspace(3)* @llvm.amdgcn.kernel.k01.lds to i16), i16 poison, i16 poison], [4 x i16] [i16 poison, i16 ptrtoint (%llvm.amdgcn.kernel.k123.lds.t addrspace(3)* @llvm.amdgcn.kernel.k123.lds to i16), i16 ptrtoint (i64 addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k123.lds.t, %llvm.amdgcn.kernel.k123.lds.t addrspace(3)* @llvm.amdgcn.kernel.k123.lds, i32 0, i32 3) to i16), i16 ptrtoint (i8 addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k123.lds.t, %llvm.amdgcn.kernel.k123.lds.t addrspace(3)* @llvm.amdgcn.kernel.k123.lds, i32 0, i32 1) to i16)], [4 x i16] [i16 poison, i16 poison, i16 ptrtoint (%llvm.amdgcn.kernel.k23.lds.t addrspace(3)* @llvm.amdgcn.kernel.k23.lds to i16), i16 ptrtoint (i8 addrspace(3)* getelementptr inbounds (%llvm.amdgcn.kernel.k23.lds.t, %llvm.amdgcn.kernel.k23.lds.t addrspace(3)* @llvm.amdgcn.kernel.k23.lds, i32 0, i32 1) to i16)]]
 
 define void @f0() {
 ; OPT-LABEL: @f0(
 ; OPT-NEXT:    [[TMP1:%.*]] = call i32 @llvm.amdgcn.lds.kernel.id()
-; OPT-NEXT:    [[V02:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 0
+; OPT-NEXT:    [[V02:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 0
 ; OPT-NEXT:    [[TMP2:%.*]] = load i16, i16 addrspace(4)* [[V02]], align 2
 ; OPT-NEXT:    [[TMP3:%.*]] = zext i16 [[TMP2]] to i32
 ; OPT-NEXT:    [[V03:%.*]] = inttoptr i32 [[TMP3]] to float addrspace(3)*
 ; OPT-NEXT:    [[LD:%.*]] = load float, float addrspace(3)* [[V03]], align 4
 ; OPT-NEXT:    [[MUL:%.*]] = fmul float [[LD]], 2.000000e+00
-; OPT-NEXT:    [[V0:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 0
+; OPT-NEXT:    [[V0:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 0
 ; OPT-NEXT:    [[TMP4:%.*]] = load i16, i16 addrspace(4)* [[V0]], align 2
 ; OPT-NEXT:    [[TMP5:%.*]] = zext i16 [[TMP4]] to i32
 ; OPT-NEXT:    [[V01:%.*]] = inttoptr i32 [[TMP5]] to float addrspace(3)*
@@ -50,8 +50,8 @@ define void @f0() {
 ; GCN-NEXT:    s_mov_b32 s4, s15
 ; GCN-NEXT:    s_ashr_i32 s5, s15, 31
 ; GCN-NEXT:    s_getpc_b64 s[6:7]
-; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds_offset_table@rel32@lo+4
-; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds_offset_table@rel32@hi+12
+; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds.offset.table@rel32@lo+4
+; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds.offset.table@rel32@hi+12
 ; GCN-NEXT:    s_lshl_b64 s[4:5], s[4:5], 3
 ; GCN-NEXT:    s_add_u32 s4, s4, s6
 ; GCN-NEXT:    s_addc_u32 s5, s5, s7
@@ -75,13 +75,13 @@ define void @f0() {
 define void @f1() {
 ; OPT-LABEL: @f1(
 ; OPT-NEXT:    [[TMP1:%.*]] = call i32 @llvm.amdgcn.lds.kernel.id()
-; OPT-NEXT:    [[V12:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 1
+; OPT-NEXT:    [[V12:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 1
 ; OPT-NEXT:    [[TMP2:%.*]] = load i16, i16 addrspace(4)* [[V12]], align 2
 ; OPT-NEXT:    [[TMP3:%.*]] = zext i16 [[TMP2]] to i32
 ; OPT-NEXT:    [[V13:%.*]] = inttoptr i32 [[TMP3]] to i16 addrspace(3)*
 ; OPT-NEXT:    [[LD:%.*]] = load i16, i16 addrspace(3)* [[V13]], align 2
 ; OPT-NEXT:    [[MUL:%.*]] = mul i16 [[LD]], 3
-; OPT-NEXT:    [[V1:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 1
+; OPT-NEXT:    [[V1:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 1
 ; OPT-NEXT:    [[TMP4:%.*]] = load i16, i16 addrspace(4)* [[V1]], align 2
 ; OPT-NEXT:    [[TMP5:%.*]] = zext i16 [[TMP4]] to i32
 ; OPT-NEXT:    [[V11:%.*]] = inttoptr i32 [[TMP5]] to i16 addrspace(3)*
@@ -94,8 +94,8 @@ define void @f1() {
 ; GCN-NEXT:    s_mov_b32 s4, s15
 ; GCN-NEXT:    s_ashr_i32 s5, s15, 31
 ; GCN-NEXT:    s_getpc_b64 s[6:7]
-; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds_offset_table@rel32@lo+4
-; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds_offset_table@rel32@hi+12
+; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds.offset.table@rel32@lo+4
+; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds.offset.table@rel32@hi+12
 ; GCN-NEXT:    s_lshl_b64 s[4:5], s[4:5], 3
 ; GCN-NEXT:    s_add_u32 s4, s4, s6
 ; GCN-NEXT:    s_addc_u32 s5, s5, s7
@@ -119,13 +119,13 @@ define void @f1() {
 define void @f2() {
 ; OPT-LABEL: @f2(
 ; OPT-NEXT:    [[TMP1:%.*]] = call i32 @llvm.amdgcn.lds.kernel.id()
-; OPT-NEXT:    [[V22:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 2
+; OPT-NEXT:    [[V22:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 2
 ; OPT-NEXT:    [[TMP2:%.*]] = load i16, i16 addrspace(4)* [[V22]], align 2
 ; OPT-NEXT:    [[TMP3:%.*]] = zext i16 [[TMP2]] to i32
 ; OPT-NEXT:    [[V23:%.*]] = inttoptr i32 [[TMP3]] to i64 addrspace(3)*
 ; OPT-NEXT:    [[LD:%.*]] = load i64, i64 addrspace(3)* [[V23]], align 4
 ; OPT-NEXT:    [[MUL:%.*]] = mul i64 [[LD]], 4
-; OPT-NEXT:    [[V2:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 2
+; OPT-NEXT:    [[V2:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 2
 ; OPT-NEXT:    [[TMP4:%.*]] = load i16, i16 addrspace(4)* [[V2]], align 2
 ; OPT-NEXT:    [[TMP5:%.*]] = zext i16 [[TMP4]] to i32
 ; OPT-NEXT:    [[V21:%.*]] = inttoptr i32 [[TMP5]] to i64 addrspace(3)*
@@ -138,8 +138,8 @@ define void @f2() {
 ; GCN-NEXT:    s_mov_b32 s4, s15
 ; GCN-NEXT:    s_ashr_i32 s5, s15, 31
 ; GCN-NEXT:    s_getpc_b64 s[6:7]
-; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds_offset_table@rel32@lo+8
-; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds_offset_table@rel32@hi+16
+; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds.offset.table@rel32@lo+8
+; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds.offset.table@rel32@hi+16
 ; GCN-NEXT:    s_lshl_b64 s[4:5], s[4:5], 3
 ; GCN-NEXT:    s_add_u32 s4, s4, s6
 ; GCN-NEXT:    s_addc_u32 s5, s5, s7
@@ -163,13 +163,13 @@ define void @f2() {
 define void @f3() {
 ; OPT-LABEL: @f3(
 ; OPT-NEXT:    [[TMP1:%.*]] = call i32 @llvm.amdgcn.lds.kernel.id()
-; OPT-NEXT:    [[V32:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 3
+; OPT-NEXT:    [[V32:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 3
 ; OPT-NEXT:    [[TMP2:%.*]] = load i16, i16 addrspace(4)* [[V32]], align 2
 ; OPT-NEXT:    [[TMP3:%.*]] = zext i16 [[TMP2]] to i32
 ; OPT-NEXT:    [[V33:%.*]] = inttoptr i32 [[TMP3]] to i8 addrspace(3)*
 ; OPT-NEXT:    [[LD:%.*]] = load i8, i8 addrspace(3)* [[V33]], align 1
 ; OPT-NEXT:    [[MUL:%.*]] = mul i8 [[LD]], 5
-; OPT-NEXT:    [[V3:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds_offset_table, i32 0, i32 [[TMP1]], i32 3
+; OPT-NEXT:    [[V3:%.*]] = getelementptr inbounds [3 x [4 x i16]], [3 x [4 x i16]] addrspace(4)* @llvm.amdgcn.lds.offset.table, i32 0, i32 [[TMP1]], i32 3
 ; OPT-NEXT:    [[TMP4:%.*]] = load i16, i16 addrspace(4)* [[V3]], align 2
 ; OPT-NEXT:    [[TMP5:%.*]] = zext i16 [[TMP4]] to i32
 ; OPT-NEXT:    [[V31:%.*]] = inttoptr i32 [[TMP5]] to i8 addrspace(3)*
@@ -182,8 +182,8 @@ define void @f3() {
 ; GCN-NEXT:    s_mov_b32 s4, s15
 ; GCN-NEXT:    s_ashr_i32 s5, s15, 31
 ; GCN-NEXT:    s_getpc_b64 s[6:7]
-; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds_offset_table@rel32@lo+8
-; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds_offset_table@rel32@hi+16
+; GCN-NEXT:    s_add_u32 s6, s6, llvm.amdgcn.lds.offset.table@rel32@lo+8
+; GCN-NEXT:    s_addc_u32 s7, s7, llvm.amdgcn.lds.offset.table@rel32@hi+16
 ; GCN-NEXT:    s_lshl_b64 s[4:5], s[4:5], 3
 ; GCN-NEXT:    s_add_u32 s4, s4, s6
 ; GCN-NEXT:    s_addc_u32 s5, s5, s7
@@ -366,10 +366,10 @@ define amdgpu_kernel void @k123() {
 
 
 ; Table size length number-kernels * number-variables * sizeof(uint16_t)
-; GCN:      .type	llvm.amdgcn.lds_offset_table,@object
+; GCN:      .type	llvm.amdgcn.lds.offset.table,@object
 ; GCN-NEXT: .section	.data.rel.ro,#alloc,#write
 ; GCN-NEXT: .p2align	4, 0x0
-; GCN-NEXT: llvm.amdgcn.lds_offset_table:
+; GCN-NEXT: llvm.amdgcn.lds.offset.table:
 ; GCN-NEXT: .short	0+4
 ; GCN-NEXT: .short	0
 ; GCN-NEXT: .zero	2
@@ -382,4 +382,4 @@ define amdgpu_kernel void @k123() {
 ; GCN-NEXT: .zero	2
 ; GCN-NEXT: .short	0
 ; GCN-NEXT: .short	0+8
-; GCN-NEXT: .size	llvm.amdgcn.lds_offset_table, 24
+; GCN-NEXT: .size	llvm.amdgcn.lds.offset.table, 24

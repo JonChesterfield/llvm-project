@@ -363,13 +363,10 @@ public:
         continue;
       }
 
-      std::string varname = GV.getName().str();
-
       SmallVector<User *, 16> Stack(GV.users());
       for (User *V : GV.users()) {
         if (auto *I = dyn_cast<Instruction>(V)) {
           Function *F = I->getFunction();
-          std::string funcname = F->getName().str();
           if (isKernelLDS(F)) {
             kernels[F].insert(&GV);
           } else {
@@ -493,11 +490,11 @@ public:
       LLVMContext &Ctx, std::vector<GlobalVariable *> Variables,
       DenseMap<GlobalVariable *, Constant *> &LDSVarsToConstantGEP) {
     // Create a ConstantArray containing the address of each Variable within the
-    // kernel corresponding to LDSVarsToConstantGEP, or undef if that kernel
+    // kernel corresponding to LDSVarsToConstantGEP, or poison if that kernel
     // does not allocate it
 
-    auto I16 = Type::getInt16Ty(Ctx);
-    auto I32 = Type::getInt32Ty(Ctx);
+    Type *I16 = Type::getInt16Ty(Ctx);
+    Type *I32 = Type::getInt32Ty(Ctx);
 
     ArrayType *KernelOffsetsType = ArrayType::get(I16, Variables.size());
 
@@ -513,7 +510,7 @@ public:
 
         Elements.push_back(trunc);
       } else {
-        Elements.push_back(UndefValue::get(I16));
+        Elements.push_back(PoisonValue::get(I16));
       }
     }
     return ConstantArray::get(KernelOffsetsType, Elements);
@@ -551,7 +548,7 @@ public:
 
     return new GlobalVariable(
         M, AllKernelsOffsetsType, true, GlobalValue::InternalLinkage, init,
-        "llvm.amdgcn.lds_offset_table", nullptr, GlobalValue::NotThreadLocal,
+        "llvm.amdgcn.lds.offset.table", nullptr, GlobalValue::NotThreadLocal,
         AMDGPUAS::CONSTANT_ADDRESS);
   }
 
@@ -633,6 +630,7 @@ public:
       DenseSet<GlobalVariable *> const &VariableSet) {
 
     DenseSet<Function *> KernelSet;
+
     if (VariableSet.empty()) return KernelSet;
 
     for (Function &Func : M.functions()) {
