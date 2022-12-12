@@ -11877,6 +11877,12 @@ static bool isFrameIndexOp(SDValue Op) {
   return isa<FrameIndexSDNode>(Op);
 }
 
+static SDValue buildSMovImm32(SelectionDAG &DAG, const SDLoc &DL,
+                              uint64_t Val) {
+  SDValue K = DAG.getTargetConstant(Val, DL, MVT::i32);
+  return SDValue(DAG.getMachineNode(AMDGPU::S_MOV_B32, DL, MVT::i32, K), 0);
+}
+
 /// Legalize target independent instructions (e.g. INSERT_SUBREG)
 /// with frame index operands.
 /// LLVM assumes that inputs are to these instructions are registers.
@@ -11904,6 +11910,30 @@ SDNode *SITargetLowering::legalizeTargetIndependentNode(SDNode *Node,
       DAG.ReplaceAllUsesWith(Node, ToResultReg.getNode());
       DAG.RemoveDeadNode(Node);
       return ToResultReg.getNode();
+    }
+
+    if (SrcVal.getValueType() == MVT::i32 && DestReg->getReg().isPhysical()) {
+      // CopyToReg may be writing a constant to a sgpr as part of a calling
+      // convention. If that constant is selected to a vgpr then we later need
+      // to copy it into a sgpr. Instead, special case the copying-to-sgpr here to
+      // force the instantiation into a sgpr independent of what lowering might
+      // happen to other uses of that constant node.
+      if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(SrcVal)) {
+        MachineRegisterInfo &MRI = DAG.getMachineFunction().getRegInfo();
+        const SIRegisterInfo *TRI = Subtarget->getRegisterInfo();
+
+        if (TRI->isSGPRReg(MRI, DestReg->getReg())) {
+          uint64_t Value = C->getZExtValue();
+          SDLoc DL(Node);
+          // Fourth argument to CopyToReg (glue) can be missing
+          SmallVector<SDValue, 4> Ops;
+          for (unsigned I = 0; I < Node->getNumOperands(); I++) {
+            Ops.push_back((I == 2) ? buildSMovImm32(DAG, DL, Value)
+                                   : Node->getOperand(I));
+          }
+          return DAG.UpdateNodeOperands(Node, Ops);
+        }
+      }
     }
   }
 
@@ -12149,12 +12179,6 @@ void SITargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
       AddIMGInit(MI);
     TII->enforceOperandRCAlignment(MI, AMDGPU::OpName::vaddr);
   }
-}
-
-static SDValue buildSMovImm32(SelectionDAG &DAG, const SDLoc &DL,
-                              uint64_t Val) {
-  SDValue K = DAG.getTargetConstant(Val, DL, MVT::i32);
-  return SDValue(DAG.getMachineNode(AMDGPU::S_MOV_B32, DL, MVT::i32, K), 0);
 }
 
 MachineSDNode *SITargetLowering::wrapAddr64Rsrc(SelectionDAG &DAG,
