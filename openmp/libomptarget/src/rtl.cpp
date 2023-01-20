@@ -71,6 +71,10 @@ __attribute__((constructor(101))) void init() {
     timeTraceProfilerInitialize(500 /* us */, "libomptarget");
 
   PM->RTLs.loadRTLs();
+  PM->RTLsLoaded = true;
+  for (auto * d : PM->postponed_register_lib_args) {
+    __tgt_register_lib(d);
+  }
 }
 
 __attribute__((destructor(101))) void deinit() {

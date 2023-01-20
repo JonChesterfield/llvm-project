@@ -22,6 +22,7 @@
 #include <mutex>
 #include <set>
 #include <thread>
+#include <atomic>
 
 #include "ExclusiveAccess.h"
 #include "omptarget.h"
@@ -530,6 +531,10 @@ struct PluginManager {
   /// Flag to indicate if we use events to ensure the atomicity of
   /// map clauses or not. Can be modified with an environment variable.
   const bool UseEventsForAtomicTransfers;
+
+  // Work around plugins that call dlopen on shared libraries that call tgt_register_lib
+  std::atomic_bool RTLsLoaded = false;
+  llvm::SmallVector<__tgt_bin_desc*> postponed_register_lib_args;
 };
 
 extern PluginManager *PM;
