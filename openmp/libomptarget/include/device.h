@@ -13,6 +13,7 @@
 #ifndef _OMPTARGET_DEVICE_H
 #define _OMPTARGET_DEVICE_H
 
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -22,7 +23,6 @@
 #include <mutex>
 #include <set>
 #include <thread>
-#include <atomic>
 
 #include "ExclusiveAccess.h"
 #include "omptarget.h"
@@ -532,9 +532,31 @@ struct PluginManager {
   /// map clauses or not. Can be modified with an environment variable.
   const bool UseEventsForAtomicTransfers;
 
-  // Work around plugins that call dlopen on shared libraries that call tgt_register_lib
+  // Work around for plugins that call dlopen on shared libraries that call
+  // tgt_register_lib during their initialisation. Stash the pointers in a
+  // vector until the plugins are all initialised and then register them.
+  bool maybeDelayRegisterLib(__tgt_bin_desc *Desc) {
+    if (!RTLsLoaded) {
+      // Only reachable from libomptarget constructor
+      DelayedBinDesc.push_back(Desc);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void registerDelayedLibraries() {
+    // Only called by libomptarget constructor
+    for (auto *Desc : DelayedBinDesc) {
+      __tgt_register_lib(Desc);
+    }
+    DelayedBinDesc.clear();
+    RTLsLoaded = true;
+  }
+
+private:
   std::atomic_bool RTLsLoaded = false;
-  llvm::SmallVector<__tgt_bin_desc*> postponed_register_lib_args;
+  llvm::SmallVector<__tgt_bin_desc *> DelayedBinDesc;
 };
 
 extern PluginManager *PM;

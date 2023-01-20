@@ -35,8 +35,7 @@ EXTERN void __tgt_register_requires(int64_t Flags) {
 /// adds a target shared library to the target execution image
 EXTERN void __tgt_register_lib(__tgt_bin_desc *Desc) {
   TIMESCOPE();
-  if (!PM->RTLsLoaded) {
-    PM->postponed_register_lib_args.push_back(Desc);
+  if (PM->maybeDelayRegisterLib(Desc)) {
     return;
   }
   for (auto &RTL : PM->RTLs.AllRTLs) {
