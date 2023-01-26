@@ -324,7 +324,9 @@ AMDGPUSubtarget::getMaxLocalMemSizeWithWaveCount(unsigned NWaves,
   const unsigned WorkGroupsPerCU =
       std::max(1u, (NWaves * getEUsPerCU()) / WavesPerWorkgroup);
 
-  return getLocalMemorySize() / WorkGroupsPerCU;
+  const unsigned WavesPerCU = WavesPerWorkgroup * WorkGroupsPerCU;
+
+  return getLocalMemorySize() / WavesPerCU;
 }
 
 // FIXME: Should return min,max range.
