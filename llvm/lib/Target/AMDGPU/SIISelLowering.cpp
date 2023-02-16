@@ -2412,7 +2412,7 @@ SDValue SITargetLowering::LowerFormalArguments(
     return DAG.getEntryNode();
   }
 
-  Info->allocateKnownAddressLDSGlobal(Fn);
+  Info->allocateKnownAddressLDSGlobal(MF.getFunction().getParent(), Fn);
 
   SmallVector<ISD::InputArg, 16> Splits;
   SmallVector<CCValAssign, 16> ArgLocs;

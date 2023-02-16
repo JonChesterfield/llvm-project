@@ -12,6 +12,8 @@
 #include "AMDGPUSubtarget.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/Target/TargetMachine.h"
 
 using namespace llvm;
@@ -89,12 +91,6 @@ unsigned AMDGPUMachineFunction::allocateLDSGlobal(const DataLayout &DL,
 
 static constexpr StringLiteral ModuleLDSName = "llvm.amdgcn.module.lds";
 
-bool AMDGPUMachineFunction::isKnownAddressLDSGlobal(const GlobalVariable &GV) {
-  auto name = GV.getName();
-  return (name == ModuleLDSName) ||
-         (name.startswith("llvm.amdgcn.kernel.") && name.endswith(".lds"));
-}
-
 const Function *AMDGPUMachineFunction::getKernelLDSFunctionFromGlobal(
     const GlobalVariable &GV) {
   const Module &M = *GV.getParent();
@@ -105,9 +101,9 @@ const Function *AMDGPUMachineFunction::getKernelLDSFunctionFromGlobal(
   return nullptr;
 }
 
-const GlobalVariable *
-AMDGPUMachineFunction::getKernelLDSGlobalFromFunction(const Function &F) {
-  const Module *M = F.getParent();
+GlobalVariable *
+AMDGPUMachineFunction::getKernelLDSGlobalFromFunction(Module *M,
+                                                      const Function &F) {
   std::string KernelLDSName = "llvm.amdgcn.kernel.";
   KernelLDSName += F.getName();
   KernelLDSName += ".lds";
@@ -119,39 +115,19 @@ static bool canElideModuleLDS(const Function &F) {
   return F.hasFnAttribute("amdgpu-elide-module-lds");
 }
 
-unsigned AMDGPUMachineFunction::calculateKnownAddressOfLDSGlobal(
-    const GlobalVariable &GV) {
-  // module.lds, then alignment padding, then kernel.lds, then other variables
-  // if any
-
-  assert(isKnownAddressLDSGlobal(GV));
-  unsigned Offset = 0;
-
-  if (GV.getName() == ModuleLDSName) {
-    return 0;
-  }
-
-  const Module *M = GV.getParent();
-  const DataLayout &DL = M->getDataLayout();
-
-  const GlobalVariable *GVM = M->getNamedGlobal(ModuleLDSName);
-  const Function *f = getKernelLDSFunctionFromGlobal(GV);
-
-  // Account for module.lds if allocated for this function
-  if (GVM && f && !canElideModuleLDS(*f)) {
-    // allocator aligns this to var align, but it's zero to begin with
-    Offset += DL.getTypeAllocSize(GVM->getValueType());
-  }
-
-  // No dynamic LDS alignment done by allocateModuleLDSGlobal
-  Offset = alignTo(
-      Offset, DL.getValueOrABITypeAlignment(GV.getAlign(), GV.getValueType()));
-
-  return Offset;
+static void recordLDSAbsoluteAddress(Module *M, GlobalVariable *GV,
+                                     uint32_t Address) {
+  // Write the specified address into metadata where it can be retrieved by the
+  // assembler
+  LLVMContext &Ctx = M->getContext();
+  auto Type = M->getDataLayout().getIntPtrType(Ctx, AMDGPUAS::LOCAL_ADDRESS);
+  GV->setMetadata(LLVMContext::MD_absolute_symbol,
+                  MDNode::get(Ctx, ConstantAsMetadata::get(
+                                       ConstantInt::get(Type, Address))));
 }
 
-void AMDGPUMachineFunction::allocateKnownAddressLDSGlobal(const Function &F) {
-  const Module *M = F.getParent();
+void AMDGPUMachineFunction::allocateKnownAddressLDSGlobal(Module *M,
+                                                          const Function &F) {
 
   // This function is called before allocating any other LDS so that it can
   // reliably put values at known addresses. Consequently, dynamic LDS, if
@@ -176,25 +152,19 @@ void AMDGPUMachineFunction::allocateKnownAddressLDSGlobal(const Function &F) {
     // }
     // other variables, e.g. dynamic lds, allocated after this call
 
-    const GlobalVariable *GV = M->getNamedGlobal(ModuleLDSName);
-    const GlobalVariable *KV = getKernelLDSGlobalFromFunction(F);
+    GlobalVariable *GV = M->getNamedGlobal(ModuleLDSName);
+    GlobalVariable *KV = getKernelLDSGlobalFromFunction(M, F);
 
     if (GV && !canElideModuleLDS(F)) {
-      assert(isKnownAddressLDSGlobal(*GV));
       unsigned Offset = allocateLDSGlobal(M->getDataLayout(), *GV, Align());
-      (void)Offset;
-      assert(Offset == calculateKnownAddressOfLDSGlobal(*GV) &&
-             "Module LDS expected to be allocated before other LDS");
+      recordLDSAbsoluteAddress(M, GV, Offset);
     }
 
     if (KV) {
       // The per-kernel offset is deterministic because it is allocated
       // before any other non-module LDS variables.
-      assert(isKnownAddressLDSGlobal(*KV));
       unsigned Offset = allocateLDSGlobal(M->getDataLayout(), *KV, Align());
-      (void)Offset;
-      assert(Offset == calculateKnownAddressOfLDSGlobal(*KV) &&
-             "Kernel LDS expected to be immediately after module LDS");
+      recordLDSAbsoluteAddress(M, KV, Offset);
     }
   }
 }
