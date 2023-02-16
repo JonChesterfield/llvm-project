@@ -2412,7 +2412,7 @@ SDValue SITargetLowering::LowerFormalArguments(
     return DAG.getEntryNode();
   }
 
-  Info->allocateKnownAddressLDSGlobal(Fn);
+  Info->allocateKnownAddressLDSGlobal(MF.getFunction().getParent(), Fn);
 
   SmallVector<ISD::InputArg, 16> Splits;
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -6139,7 +6139,8 @@ SDValue SITargetLowering::LowerGlobalAddress(AMDGPUMachineFunction *MFI,
       if (DAG.getDataLayout().getTypeAllocSize(Ty).isZero()) {
         assert(PtrVT == MVT::i32 && "32-bit pointer is expected.");
         // Adjust alignment for that dynamic shared memory array.
-        MFI->setDynLDSAlign(DAG.getDataLayout(), *cast<GlobalVariable>(GV));
+        Function &F = DAG.getMachineFunction().getFunction();
+        MFI->setDynLDSAlign(F.getParent(), F, *cast<GlobalVariable>(GV));
         return SDValue(
             DAG.getMachineNode(AMDGPU::GET_GROUPSTATICSIZE, DL, PtrVT), 0);
       }

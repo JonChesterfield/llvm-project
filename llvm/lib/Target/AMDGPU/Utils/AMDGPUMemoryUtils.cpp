@@ -79,22 +79,21 @@ bool isLDSVariableToLower(const GlobalVariable &GV) {
   if (GV.getType()->getPointerAddressSpace() != AMDGPUAS::LOCAL_ADDRESS) {
     return false;
   }
-  if (!GV.hasInitializer()) {
-    // addrspace(3) without initializer implies cuda/hip extern __shared__
-    // the semantics for such a variable appears to be that all extern
-    // __shared__ variables alias one another, in which case this transform
-    // is not required
-    return false;
-  }
-  if (!isa<UndefValue>(GV.getInitializer())) {
-    // Initializers are unimplemented for LDS address space.
-    // Leave such variables in place for consistent error reporting.
-    return false;
-  }
   if (GV.isConstant()) {
     // A constant undef variable can't be written to, and any load is
     // undef, so it should be eliminated by the optimizer. It could be
     // dropped by the back end if not. This pass skips over it.
+    return false;
+  }
+  if (!GV.hasInitializer()) {
+    // addrspace(3) without initializer implies cuda/hip extern __shared__
+    // the semantics for such a variable appears to be that all extern
+    // __shared__ variables alias one another. This hits different handling.
+    return true;
+  }
+  if (!isa<UndefValue>(GV.getInitializer())) {
+    // Initializers are unimplemented for LDS address space.
+    // Leave such variables in place for consistent error reporting.
     return false;
   }
   return true;
