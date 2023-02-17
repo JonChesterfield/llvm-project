@@ -1000,14 +1000,9 @@ public:
         if (KernelsThatAllocateDynamicLDS.contains(func)) {
 
           Align MaxDynamicAlignment(1);
-          fprintf(stdout, "kernel %s\n", func->getName().str().c_str());
           for (GlobalVariable *GV : LDSUsesInfo.indirect_access[func]) {
             if (!DynamicVariables.contains(GV))
               continue;
-
-            fprintf(stdout, "  uses dynamic variable\n  ");
-            GV->dump();
-
             MaxDynamicAlignment =
                 std::max(MaxDynamicAlignment, AMDGPU::getAlign(DL, GV));
           }
