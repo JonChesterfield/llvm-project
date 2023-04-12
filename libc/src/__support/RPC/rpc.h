@@ -301,6 +301,8 @@ struct Client : public Process<Buffer, 32, 1, false> {
   LIBC_INLINE ~Client() = default;
 
   template <typename F, typename U> LIBC_INLINE void run(F fill, U use);
+  template <typename F> LIBC_INLINE void run_async(F fill);
+  
 };
 
 /// The RPC server used to respond to the client.
@@ -337,6 +339,15 @@ template <typename F, typename U> LIBC_INLINE void Client::run(F fill, U use) {
   close(port3);
 }
 
+template <typename F> LIBC_INLINE void Client::run_async(F fill) {
+  uint32_t ThreadMask = 1;
+  port_t<0, 0> port0 = open(ThreadMask);
+  // Apply the \p fill to the buffer and signal the server.
+  port_t<0, 1> port1 = send(this->use(port0, fill));
+  close(port1);
+}
+
+  
 /// Run the RPC server protocol to communicate with the client. This is
 /// non-blocking and only checks the server a single time. We perform the
 /// following high level actions to complete a communication:
