@@ -51,7 +51,7 @@ template <unsigned I, unsigned O> struct port_t {
   port_t<I, !O> invert_outbox() { return value; }
 };
 
-template <int scope> struct bitmap_t {
+template <bool InvertedLoad, int scope> struct bitmap_t {
 private:
   cpp::Atomic<uint32_t> *underlying;
   using Word = uint32_t;
@@ -94,7 +94,8 @@ private:
 
   Word load_word(uint32_t w) const {
     cpp::Atomic<uint32_t> &addr = underlying[w];
-    return addr.load(cpp::MemoryOrder::RELAXED);
+    Word tmp = addr.load(cpp::MemoryOrder::RELAXED);
+    return InvertedLoad ? ~tmp : tmp;
   }
 
 public:
@@ -184,9 +185,9 @@ struct Process {
   static_assert(WarpSize == 32 || WarpSize == 64, "");
 
   BufferElement *shared_buffer;
-  bitmap_t<__OPENCL_MEMORY_SCOPE_DEVICE> active;
-  bitmap_t<__OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES> inbox;
-  bitmap_t<__OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES> outbox;
+  bitmap_t<false, __OPENCL_MEMORY_SCOPE_DEVICE> active;
+  bitmap_t<InvertedInboxLoadT,__OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES> inbox;
+  bitmap_t<false, __OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES> outbox;
 
   using ThreadMask = typename WarpSizeType<WarpSize>::Type;
 
