@@ -312,7 +312,7 @@ struct Server : public Process<Buffer, 32, 1, true> {
 
   template <typename W, typename C> LIBC_INLINE bool handle(W work, C clean);
 };
-
+  
 /// Run the RPC client protocol to communicate with the server. We perform the
 /// following high level actions to complete a communication:
 ///   - Apply \p fill to the shared buffer and write 1 to the outbox.
@@ -364,6 +364,7 @@ LIBC_INLINE bool Server::handle(W work, C clean) {
   // Clean up the buffer and signal the end of the protocol.
   port_t<1, 0> port3 = send(use(port2, clean));
 
+  close(port3);
   return true;
 }
 
