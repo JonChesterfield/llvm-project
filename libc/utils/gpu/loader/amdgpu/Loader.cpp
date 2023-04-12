@@ -373,7 +373,8 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
     handle_error(err);
 
   // Initialize the RPC server's buffer for host-device communication.
-  server.reset(server_inbox, server_outbox, buffer);
+  static __llvm_libc::cpp::Atomic<uint32_t> locks = {0};
+  server.reset(&locks, server_inbox, server_outbox, buffer);
 
   // Initialize the packet header and set the doorbell signal to begin execution
   // by the HSA runtime.

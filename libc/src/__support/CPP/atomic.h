@@ -85,11 +85,19 @@ public:
   T fetch_add(T increment, MemoryOrder mem_ord = MemoryOrder::SEQ_CST) {
     return __atomic_fetch_add(&val, increment, int(mem_ord));
   }
-
+  
   T fetch_sub(T decrement, MemoryOrder mem_ord = MemoryOrder::SEQ_CST) {
     return __atomic_fetch_sub(&val, decrement, int(mem_ord));
   }
 
+  T fetch_or(T increment, MemoryOrder mem_ord = MemoryOrder::SEQ_CST) {
+    return __atomic_fetch_or(&val, increment, int(mem_ord));
+  }
+
+  T fetch_and(T increment, MemoryOrder mem_ord = MemoryOrder::SEQ_CST) {
+    return __atomic_fetch_and(&val, increment, int(mem_ord));
+  }
+  
   // Set the value without using an atomic operation. This is useful
   // in initializing atomic values without a constructor.
   void set(T rhs) { val = rhs; }
