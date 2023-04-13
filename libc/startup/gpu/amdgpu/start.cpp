@@ -12,9 +12,9 @@ extern "C" int main(int argc, char **argv, char **envp);
 
 extern "C" [[gnu::visibility("protected"), clang::amdgpu_kernel]] void
 _start(int argc, char **argv, char **envp, int *ret, void *in, void *out,
-       void *buffer) {
+       void *buffer, void* more_bits) {
   static __llvm_libc::cpp::Atomic<uint32_t> locks = {0};
-  __llvm_libc::rpc::client.reset(&locks, in, out, buffer);
+  __llvm_libc::rpc::client.reset(&locks, in, out, buffer, more_bits);
 
   __atomic_fetch_or(ret, main(argc, argv, envp), __ATOMIC_RELAXED);
 }

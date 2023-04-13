@@ -20,12 +20,13 @@ static constexpr size_t BUFFER_SIZE = sizeof(rpc::Buffer) - sizeof(uint64_t);
 static constexpr size_t MAX_STRING_SIZE = BUFFER_SIZE;
 
 LIBC_INLINE void send_null_terminated(cpp::string_view src) {
-  rpc::client.run(
-      [&](rpc::Buffer *buffer) {
+  rpc::client.run_multi(
+     [&](bool, rpc::Buffer *buffer) {
         buffer->data[0] = rpc::Opcode::PRINT_TO_STDERR;
         char *data = reinterpret_cast<char *>(&buffer->data[1]);
         inline_memcpy(data, src.data(), src.size());
         data[src.size()] = '\0';
+        return true;
       },
       [](rpc::Buffer *) { /* void */ });
 }

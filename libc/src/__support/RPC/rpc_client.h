@@ -15,7 +15,7 @@ namespace __llvm_libc {
 namespace rpc {
 
 /// The libc client instance used to communicate with the server.
-extern Client client;
+extern StreamClient client;
 
 } // namespace rpc
 } // namespace __llvm_libc

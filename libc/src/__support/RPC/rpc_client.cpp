@@ -12,7 +12,7 @@ namespace __llvm_libc {
 namespace rpc {
 
 /// The libc client instance used to communicate with the server.
-Client client;
+StreamClient client;
 
 /// Externally visible symbol to signify the usage of an RPC client to
 /// whomever needs to run the server.

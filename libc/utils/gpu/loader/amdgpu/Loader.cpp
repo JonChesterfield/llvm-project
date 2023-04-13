@@ -37,15 +37,17 @@ struct kernel_args_t {
   void *inbox;
   void *outbox;
   void *buffer;
+  void *more_bits;
 };
 
-static __llvm_libc::rpc::Server server;
+static __llvm_libc::rpc::StreamServer server;
 
 /// Queries the RPC client at least once and performs server-side work if there
 /// are any active requests.
 void handle_server() {
   while (server.handle(
-      [&](__llvm_libc::rpc::Buffer *buffer) {
+        [&](bool stream, __llvm_libc::rpc::Buffer *buffer) {
+          (void)stream;
         switch (static_cast<__llvm_libc::rpc::Opcode>(buffer->data[0])) {
         case __llvm_libc::rpc::Opcode::PRINT_TO_STDERR: {
           fputs(reinterpret_cast<const char *>(&buffer->data[1]), stderr);
@@ -56,10 +58,11 @@ void handle_server() {
           break;
         }
         default:
-          return;
-        };
+          return false;
+        }
+        return false;
       },
-      [](__llvm_libc::rpc::Buffer *buffer) {}))
+      [](bool,__llvm_libc::rpc::Buffer *buffer) -> bool{return false;}))
     ;
 }
 
@@ -311,9 +314,11 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
   hsa_amd_memory_fill(dev_ret, 0, sizeof(int));
 
   // Allocate finegrained memory for the RPC server and client to share.
+  // TODO: I don't think these are necessarily zero initialised
   void *server_inbox;
   void *server_outbox;
   void *buffer;
+  void *more_bits;
   if (hsa_status_t err = hsa_amd_memory_pool_allocate(
           finegrained_pool, sizeof(__llvm_libc::cpp::Atomic<int>),
           /*flags=*/0, &server_inbox))
@@ -326,9 +331,14 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
           finegrained_pool, sizeof(__llvm_libc::rpc::Buffer),
           /*flags=*/0, &buffer))
     handle_error(err);
+  if (hsa_status_t err = hsa_amd_memory_pool_allocate(
+          finegrained_pool, sizeof(__llvm_libc::cpp::Atomic<int>),
+          /*flags=*/0, &more_bits))
+    handle_error(err);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, server_inbox);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, server_outbox);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, buffer);
+  hsa_amd_agents_allow_access(1, &dev_agent, nullptr, more_bits);
 
   // Initialie all the arguments (explicit and implicit) to zero, then set the
   // explicit arguments to the values created above.
@@ -341,6 +351,7 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
   kernel_args->inbox = server_outbox;
   kernel_args->outbox = server_inbox;
   kernel_args->buffer = buffer;
+  kernel_args->more_bits = more_bits;
 
   // Obtain a packet from the queue.
   uint64_t packet_id = hsa_queue_add_write_index_relaxed(queue, 1);
@@ -374,7 +385,7 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
 
   // Initialize the RPC server's buffer for host-device communication.
   static __llvm_libc::cpp::Atomic<uint32_t> locks = {0};
-  server.reset(&locks, server_inbox, server_outbox, buffer);
+  server.reset(&locks, server_inbox, server_outbox, buffer, more_bits);
 
   // Initialize the packet header and set the doorbell signal to begin execution
   // by the HSA runtime.
@@ -432,6 +443,8 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
   if (hsa_status_t err = hsa_amd_memory_pool_free(buffer))
     handle_error(err);
   if (hsa_status_t err = hsa_amd_memory_pool_free(host_ret))
+    handle_error(err);
+  if (hsa_status_t err = hsa_amd_memory_pool_free(more_bits))
     handle_error(err);
 
   if (hsa_status_t err = hsa_signal_destroy(memory_signal))
