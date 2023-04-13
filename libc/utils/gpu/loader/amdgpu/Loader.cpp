@@ -315,7 +315,9 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
   void *server_outbox;
   void *buffer;
 
-  size_t bitmap_number_bytes = __llvm_libc::rpc::NumberUInt32ForBitmaps * 32;
+  size_t bitmap_number_bytes = __llvm_libc::rpc::NumberUInt32ForBitmaps *
+                               sizeof(__llvm_libc::cpp::Atomic<int>);
+
   if (hsa_status_t err =
           hsa_amd_memory_pool_allocate(finegrained_pool, bitmap_number_bytes,
                                        /*flags=*/0, &server_inbox))
