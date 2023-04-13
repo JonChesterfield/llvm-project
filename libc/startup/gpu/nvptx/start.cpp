@@ -13,7 +13,9 @@ extern "C" int main(int argc, char **argv, char **envp);
 extern "C" [[gnu::visibility("protected")]] __attribute__((nvptx_kernel)) void
 _start(int argc, char **argv, char **envp, int *ret, void *in, void *out,
        void *buffer) {
-  __llvm_libc::rpc::client.reset(in, out, buffer);
+  static __llvm_libc::cpp::Atomic<uint32_t>
+      locks[__llvm_libc::rpc::NumberUInt32ForBitmaps] = {0};
+  __llvm_libc::rpc::client.reset(&locks, in, out, buffer);
 
   __atomic_fetch_or(ret, main(argc, argv, envp), __ATOMIC_RELAXED);
 }

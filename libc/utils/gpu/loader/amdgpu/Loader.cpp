@@ -45,7 +45,7 @@ static __llvm_libc::rpc::Server server;
 /// are any active requests.
 void handle_server() {
   while (server.handle(
-      [&](__llvm_libc::rpc::Buffer *buffer) {
+      [&](__llvm_libc::rpc::ThreadBuffer *buffer) {
         switch (static_cast<__llvm_libc::rpc::Opcode>(buffer->data[0])) {
         case __llvm_libc::rpc::Opcode::PRINT_TO_STDERR: {
           fputs(reinterpret_cast<const char *>(&buffer->data[1]), stderr);
@@ -59,7 +59,7 @@ void handle_server() {
           return;
         };
       },
-      [](__llvm_libc::rpc::Buffer *buffer) {}))
+      [](__llvm_libc::rpc::ThreadBuffer *buffer) {}))
     ;
 }
 
@@ -314,16 +314,19 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
   void *server_inbox;
   void *server_outbox;
   void *buffer;
-  if (hsa_status_t err = hsa_amd_memory_pool_allocate(
-          finegrained_pool, sizeof(__llvm_libc::cpp::Atomic<int>),
-          /*flags=*/0, &server_inbox))
+
+  size_t bitmap_number_bytes = __llvm_libc::rpc::NumberUInt32ForBitmaps * 32;
+  if (hsa_status_t err =
+          hsa_amd_memory_pool_allocate(finegrained_pool, bitmap_number_bytes,
+                                       /*flags=*/0, &server_inbox))
+    handle_error(err);
+  if (hsa_status_t err =
+          hsa_amd_memory_pool_allocate(finegrained_pool, bitmap_number_bytes,
+                                       /*flags=*/0, &server_outbox))
     handle_error(err);
   if (hsa_status_t err = hsa_amd_memory_pool_allocate(
-          finegrained_pool, sizeof(__llvm_libc::cpp::Atomic<int>),
-          /*flags=*/0, &server_outbox))
-    handle_error(err);
-  if (hsa_status_t err = hsa_amd_memory_pool_allocate(
-          finegrained_pool, sizeof(__llvm_libc::rpc::Buffer),
+          finegrained_pool,
+          __llvm_libc::rpc::NumberPorts * sizeof(__llvm_libc::rpc::Buffer),
           /*flags=*/0, &buffer))
     handle_error(err);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, server_inbox);
@@ -373,7 +376,9 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
     handle_error(err);
 
   // Initialize the RPC server's buffer for host-device communication.
-  server.reset(server_inbox, server_outbox, buffer);
+  static __llvm_libc::cpp::Atomic<uint32_t>
+      locks[__llvm_libc::rpc::NumberUInt32ForBitmaps] = {0};
+  server.reset(&locks, server_inbox, server_outbox, buffer);
 
   // Initialize the packet header and set the doorbell signal to begin execution
   // by the HSA runtime.

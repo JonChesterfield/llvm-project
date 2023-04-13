@@ -20,11 +20,11 @@ void quick_exit(int status) {
   // TODO: Support asynchronous calls so we don't wait and exit from the GPU
   // immediately.
   rpc::client.run(
-      [&](rpc::Buffer *buffer) {
+      [&](rpc::ThreadBuffer *buffer) {
         buffer->data[0] = rpc::Opcode::EXIT;
         buffer->data[1] = status;
       },
-      [](rpc::Buffer *) { /* void */ });
+      [](rpc::ThreadBuffer *) { /* void */ });
 
 #if defined(LIBC_TARGET_ARCH_IS_NVPTX)
   asm("exit;" ::: "memory");
