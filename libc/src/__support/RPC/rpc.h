@@ -70,7 +70,6 @@ template <unsigned I, unsigned O> struct port_t {
   port_t<I, !O> invert_outbox() { return value; }
 };
 
-
 /// Bitmap deals with consistently picking the address that corresponds to a
 /// given port instance. 'Slot' is used to mean an index into the shared arrays
 /// which may not be currently bound to a port.
@@ -169,7 +168,6 @@ public:
     return port.invert_outbox();
   }
 
-  
   // Not wholly typed as called to drop partially constructed ports, locks
   void release_slot(uint32_t i) {
     uint32_t w = index_to_element(i);
@@ -308,7 +306,6 @@ struct Process {
     op(&shared_buffer[raw].data[get_lane_id()]);
   }
 
-
   /// Release ownership of the buffer to the other process.
   /// Requires I==O to call, returns I!=O.
   template <unsigned IandO>
@@ -321,9 +318,6 @@ struct Process {
     }
   }
 
-
-
-  
   /// Wait for the buffer to be returned by the other process.
   /// Equivalently, for the other process to close the port.
   /// Requires I!=O to call, returns I==O
@@ -338,7 +332,6 @@ struct Process {
     return port.invert_inbox();
   }
 
-
   /// Derivative / convenience functions, possibly better in a derived class
   port_t<0, 0> open(ThreadMask active_threads) {
     for (;;) {
@@ -349,7 +342,6 @@ struct Process {
       sleep_briefly();
     }
   }
-
 };
 
 /// The RPC client used to make requests to the server.
