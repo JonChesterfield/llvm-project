@@ -70,6 +70,10 @@ template <unsigned I, unsigned O> struct port_t {
   port_t<I, !O> invert_outbox() { return value; }
 };
 
+
+/// Bitmap deals with consistently picking the address that corresponds to a
+/// given port instance. 'Slot' is used to mean an index into the shared arrays
+/// which may not be currently bound to a port.
 template <bool InvertedLoad, int scope> struct bitmap_t {
 private:
   cpp::Atomic<uint32_t> *underlying;
@@ -132,6 +136,9 @@ public:
     return nthbitset(load_word(w), subindex);
   }
 
+  // Does not change inbox as no process ever writes to it's own inbox
+  // Knows that the outbox is initially zero which allows using fetch_add
+  // to set the bit over pci-e, otherwise we would need to use a CAS loop
   template <unsigned I> port_t<I, 1> claim_slot(port_t<I, 0> port) {
     uint32_t slot = port.value;
 
@@ -156,6 +163,14 @@ public:
     return port.invert_outbox();
   }
 
+  // Release also does not change the inbox. Assumes the outbox is set
+  template <unsigned I> port_t<I, 0> release_slot(port_t<I, 1> port) {
+    release_slot(port.value);
+    return port.invert_outbox();
+  }
+
+  
+  // Not wholly typed as called to drop partially constructed ports, locks
   void release_slot(uint32_t i) {
     uint32_t w = index_to_element(i);
     uint32_t subindex = index_to_subindex(i);
@@ -173,11 +188,8 @@ public:
     }
   }
 
-  template <unsigned I> port_t<I, 0> release_slot(port_t<I, 1> port) {
-    release_slot(port.value);
-    return port.invert_outbox();
-  }
-
+  // Only used on the bitmap used for device local mutual exclusion. Does not
+  // hit shared memory.
   bool try_claim_slot(uint32_t slot) {
     uint32_t w = index_to_element(slot);
     uint32_t subindex = index_to_subindex(slot);
@@ -211,7 +223,7 @@ struct Process {
   // The inverted read on inbox determines which of two linked processes
   // initially owns the underlying buffer.
   // The initial memory state is inbox == outbox == 0 which implies ownership,
-  // but one process has inbox reads intercepted and inverted so it starts out
+  // but one process has inbox read bitwise inverted. That starts out believing
   // believing the memory state is inbox == 1, outbox == 0, which implies the
   // other process owns the buffer.
   BufferElement *shared_buffer;
@@ -242,19 +254,17 @@ struct Process {
     bool success;
   };
 
-  port_t<0, 0> open(ThreadMask active_threads) {
-    for (;;) {
-      maybe<port_t<0, 0>> r = try_open(active_threads);
-      if (r.success) {
-        return r.value;
-      }
-      sleep_briefly();
-    }
-  }
-
+  /// Try to claim one of the buffer elements for this warp/wavefront/wave
   maybe<port_t<0, 0>> try_open(ThreadMask active_threads) {
 
+    // Inefficient try-each-port-in-order for simplicity of initial diff
     for (uint32_t p = 0; p < NumberPorts; p++) {
+
+      // GPUs test-set is per-lane-in-wave so you have to mask off all but one
+      // in order to distinguish between a different wave getting the lock vs
+      // a different lane in this wave getting the lock.
+      // Passing the active threads around is a volta specific quirk, can
+      // usually make that a compile time value for minor codegen improvements
       bool claim = false;
       if (is_first_lane(active_threads)) {
         claim = active.try_claim_slot(p);
@@ -270,30 +280,53 @@ struct Process {
       bool out = outbox.read_slot(p);
 
       if (in == 0 && out == 0) {
+        // Only return a port in the 0, 0 state
         return {p, true};
       }
 
       if (in == 1 && out == 1) {
-        // garbage collect from an async call
+        // Garbage collect from an async call
         outbox.release_slot(p);
       }
 
+      // Other values mean the buffer is not available to this process
       active.release_slot(p);
     }
 
     return {UINT32_MAX, false};
   }
 
+  /// Release a port. Any inbox/outbox state is acceptable.
   template <unsigned I, unsigned O> void close(port_t<I, O> port) {
     active.release_slot(port.value);
   }
 
+  /// Call a function Op on the owned buffer. Note I==O is required.
   template <unsigned IandO, typename Op>
-  void use(port_t<IandO, IandO> port, Op op) {
+  void apply(port_t<IandO, IandO> port, Op op) {
     uint32_t raw = port.value;
     op(&shared_buffer[raw].data[get_lane_id()]);
   }
 
+
+  /// Release ownership of the buffer to the other process.
+  /// Requires I==O to call, returns I!=O.
+  template <unsigned IandO>
+  port_t<IandO, !IandO> post(port_t<IandO, IandO> port) {
+    atomic_thread_fence(cpp::MemoryOrder::RELEASE);
+    if constexpr (IandO == 0) {
+      return outbox.claim_slot(port);
+    } else {
+      return outbox.release_slot(port);
+    }
+  }
+
+
+
+  
+  /// Wait for the buffer to be returned by the other process.
+  /// Equivalently, for the other process to close the port.
+  /// Requires I!=O to call, returns I==O
   template <unsigned I> port_t<!I, !I> wait(port_t<I, !I> port) {
     bool in = inbox.read_slot(port.value);
     while (in == I) {
@@ -305,18 +338,22 @@ struct Process {
     return port.invert_inbox();
   }
 
-  template <unsigned IandO>
-  port_t<IandO, !IandO> send(port_t<IandO, IandO> port) {
-    atomic_thread_fence(cpp::MemoryOrder::RELEASE);
-    if constexpr (IandO == 0) {
-      return outbox.claim_slot(port);
-    } else {
-      return outbox.release_slot(port);
+
+  /// Derivative / convenience functions, possibly better in a derived class
+  port_t<0, 0> open(ThreadMask active_threads) {
+    for (;;) {
+      maybe<port_t<0, 0>> r = try_open(active_threads);
+      if (r.success) {
+        return r.value;
+      }
+      sleep_briefly();
     }
   }
+
 };
 
 /// The RPC client used to make requests to the server.
+/// The 'false' parameter to Process means this instance can open ports first
 struct Client : public Process<Buffer, 32, false> {
   LIBC_INLINE Client() = default;
   LIBC_INLINE Client(const Client &) = default;
@@ -328,6 +365,8 @@ struct Client : public Process<Buffer, 32, false> {
 };
 
 /// The RPC server used to respond to the client.
+/// The 'true' parameter to Process means all ports will be unavailable
+/// initially, until Client has opened one and then called post on it.
 struct Server : public Process<Buffer, 32, true> {
   LIBC_INLINE Server() = default;
   LIBC_INLINE Server(const Server &) = default;
@@ -344,20 +383,20 @@ struct Server : public Process<Buffer, 32, true> {
 ///   - Apply \p use to the shared buffer and write 0 to the outbox.
 ///   - Wait until the inbox is 0.
 template <typename F, typename U> LIBC_INLINE void Client::run(F fill, U use) {
-  uint32_t ThreadMask = 1;
+  uint32_t ThreadMask = 1; // TODO: This needs to be passed in.
 
   port_t<0, 0> port0 = open(ThreadMask);
 
   // Apply the \p fill to the buffer and signal the server.
-  this->use(port0, fill);
-  port_t<0, 1> port1 = send(port0);
+  apply(port0, fill);
+  port_t<0, 1> port1 = post(port0);
 
   // Wait for the server to work on the buffer and respond.
   port_t<1, 1> port2 = wait(port1);
 
   // Apply \p use to the buffer and signal the server.
-  this->use(port2, use);
-  port_t<1, 0> port3 = send(port2);
+  apply(port2, use);
+  port_t<1, 0> port3 = post(port2);
 
   // Wait for the server to signal the end of the protocol.
   close(port3);
@@ -367,8 +406,8 @@ template <typename F> LIBC_INLINE void Client::run_async(F fill) {
   uint32_t ThreadMask = 1;
   port_t<0, 0> port0 = open(ThreadMask);
   // Apply the \p fill to the buffer and signal the server.
-  this->use(port0, fill);
-  port_t<0, 1> port1 = send(port0);
+  apply(port0, fill);
+  port_t<0, 1> port1 = post(port0);
   close(port1);
 }
 
@@ -391,15 +430,15 @@ LIBC_INLINE bool Server::handle(W work, C clean) {
   port_t<0, 0> port0 = maybe_port.value;
 
   // Apply \p work to the buffer and signal the client.
-  use(port0, work);
-  port_t<0, 1> port1 = send(port0);
+  apply(port0, work);
+  port_t<0, 1> port1 = post(port0);
 
   // Wait for the client to use the buffer and respond.
   port_t<1, 1> port2 = wait(port1);
 
   // Clean up the buffer and signal the end of the protocol.
-  use(port2, clean);
-  port_t<1, 0> port3 = send(port2);
+  apply(port2, clean);
+  port_t<1, 0> port3 = post(port2);
 
   close(port3);
   return true;
