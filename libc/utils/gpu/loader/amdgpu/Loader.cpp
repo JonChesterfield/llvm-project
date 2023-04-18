@@ -14,8 +14,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Loader.h"
-
-#include "src/__support/RPC/rpc.h"
+#include "Server.h"
 
 #include <hsa/hsa.h>
 #include <hsa/hsa_ext_amd.h>
@@ -38,30 +37,6 @@ struct kernel_args_t {
   void *outbox;
   void *buffer;
 };
-
-static __llvm_libc::rpc::Server server;
-
-/// Queries the RPC client at least once and performs server-side work if there
-/// are any active requests.
-void handle_server() {
-  while (server.handle(
-      [&](__llvm_libc::rpc::Buffer *buffer) {
-        switch (static_cast<__llvm_libc::rpc::Opcode>(buffer->data[0])) {
-        case __llvm_libc::rpc::Opcode::PRINT_TO_STDERR: {
-          fputs(reinterpret_cast<const char *>(&buffer->data[1]), stderr);
-          break;
-        }
-        case __llvm_libc::rpc::Opcode::EXIT: {
-          exit(buffer->data[1]);
-          break;
-        }
-        default:
-          return;
-        };
-      },
-      [](__llvm_libc::rpc::Buffer *buffer) {}))
-    ;
-}
 
 /// Print the error code and exit if \p code indicates an error.
 static void handle_error(hsa_status_t code) {
@@ -170,7 +145,8 @@ hsa_status_t get_agent_memory_pool(hsa_agent_t agent,
   return iterate_agent_memory_pools(agent, cb);
 }
 
-int load(int argc, char **argv, char **envp, void *image, size_t size) {
+int load(int argc, char **argv, char **envp, void *image, size_t size,
+         const LaunchParameters &params) {
   // Initialize the HSA runtime used to communicate with the device.
   if (hsa_status_t err = hsa_init())
     handle_error(err);
@@ -330,6 +306,9 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, server_outbox);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, buffer);
 
+  memset(server_inbox, 0, 4);
+  memset(server_outbox, 0, 4);
+
   // Initialie all the arguments (explicit and implicit) to zero, then set the
   // explicit arguments to the values created above.
   std::memset(args, 0, args_size);
@@ -356,12 +335,12 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
   // masked off.
   std::memset(packet, 0, sizeof(hsa_kernel_dispatch_packet_t));
   packet->setup = 1 << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
-  packet->workgroup_size_x = 1;
-  packet->workgroup_size_y = 1;
-  packet->workgroup_size_z = 1;
-  packet->grid_size_x = 1;
-  packet->grid_size_y = 1;
-  packet->grid_size_z = 1;
+  packet->workgroup_size_x = params.num_threads_x;
+  packet->workgroup_size_y = params.num_threads_y;
+  packet->workgroup_size_z = params.num_threads_z;
+  packet->grid_size_x = params.num_blocks_x * params.num_threads_x;
+  packet->grid_size_y = params.num_blocks_y * params.num_threads_y;
+  packet->grid_size_z = params.num_blocks_z * params.num_threads_z;
   packet->private_segment_size = private_size;
   packet->group_segment_size = group_size;
   packet->kernel_object = kernel;
@@ -373,7 +352,7 @@ int load(int argc, char **argv, char **envp, void *image, size_t size) {
     handle_error(err);
 
   // Initialize the RPC server's buffer for host-device communication.
-  server.reset(server_inbox, server_outbox, buffer);
+  server.reset(&lock, server_inbox, server_outbox, buffer);
 
   // Initialize the packet header and set the doorbell signal to begin execution
   // by the HSA runtime.
