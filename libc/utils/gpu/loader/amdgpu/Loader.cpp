@@ -306,6 +306,9 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, server_outbox);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, buffer);
 
+  memset(server_inbox, 0, 4);
+  memset(server_outbox, 0, 4);
+
   // Initialie all the arguments (explicit and implicit) to zero, then set the
   // explicit arguments to the values created above.
   std::memset(args, 0, args_size);

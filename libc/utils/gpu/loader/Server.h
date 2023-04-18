@@ -38,6 +38,7 @@ void handle_server() {
   }
   case __llvm_libc::rpc::Opcode::EXIT: {
     port->recv([](__llvm_libc::rpc::Buffer *buffer) {
+      // arguably leak the port, but unimportant
       exit(reinterpret_cast<uint32_t *>(buffer->data)[0]);
     });
     break;
@@ -50,6 +51,7 @@ void handle_server() {
   }
   default:
     port->recv([](__llvm_libc::rpc::Buffer *) { /* no-op */ });
+    // definitely leak the port
     return;
   }
   port->close();

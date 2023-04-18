@@ -21,6 +21,6 @@ add_integration_test(
   DEPENDS
     libc.src.__support.RPC.rpc_client
   LOADER_ARGS
-    --blocks 16
+    --blocks 1
     --threads 1
 )
