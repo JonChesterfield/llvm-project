@@ -48,6 +48,13 @@ static_assert(sizeof(Buffer) == 64, "Buffer size mismatch");
 /// server. The process contains an inbox and an outbox used for signaling
 /// ownership of the shared buffer between both sides.
 ///
+/// No process writes to its inbox. Each toggles the bit in the outbox to pass
+/// ownership to the other process.
+/// When inbox == outbox, the current state machine owns the buffer.
+/// Initially the client is able to open any port as it will load 0 from both.
+/// The server inbox read is inverted, so it loads inbox==1, outbox==0 until
+/// the client has written to its outbox.
+///
 /// This process is designed to support mostly arbitrary combinations of 'send'
 /// and 'recv' operations on the shared buffer as long as these operations are
 /// mirrored by the other process. These operations exchange ownership of the
@@ -58,14 +65,6 @@ static_assert(sizeof(Buffer) == 64, "Buffer size mismatch");
 ///   - For every 'send' / 'recv' call on one side of the process there is a
 ///     mirrored 'recv' / 'send' call.
 ///
-/// The communication protocol is organized as a pair of two-state state
-/// machines. One state machine tracks outgoing sends and the other tracks
-/// incoming receives. For example, a 'send' operation uses its input 'Ack' bit
-/// and its output 'Data' bit. If these bits are equal the sender owns the
-/// buffer, otherwise the receiver owns the buffer and we wait. Similarly, a
-/// 'recv' operation uses its output 'Ack' bit and input 'Data' bit. If these
-/// bits are not equal the receiver owns the buffer, otherwise the sender owns
-/// the buffer.
 template <bool InvertInbox> struct Process {
   LIBC_INLINE Process() = default;
   LIBC_INLINE Process(const Process &) = default;
