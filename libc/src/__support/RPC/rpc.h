@@ -170,7 +170,7 @@ struct Server : public Process<true> {
 };
 
 /// Applies \p fill to the shared buffer and initiates a send operation.
-template <bool T, typename F> LIBC_INLINE void Port<T>::send(F fill) {
+template <bool T> template <typename F> LIBC_INLINE void Port<T>::send(F fill) {
   uint32_t in = process.load_inbox(index);
 
   // We need to wait until we own the buffer before sending.
@@ -187,7 +187,7 @@ template <bool T, typename F> LIBC_INLINE void Port<T>::send(F fill) {
 }
 
 /// Applies \p use to the shared buffer and acknowledges the send.
-template <bool T, typename U> LIBC_INLINE void Port<T>::recv(U use) {
+template <bool T> template <typename U> LIBC_INLINE void Port<T>::recv(U use) {
   uint32_t in = process.load_inbox(index);
 
   // We need to wait until we own the buffer before receiving.
@@ -204,7 +204,8 @@ template <bool T, typename U> LIBC_INLINE void Port<T>::recv(U use) {
 }
 
 /// Combines a send and receive into a single function.
-template <bool T, typename F, typename U>
+template <bool T>
+template <typename F, typename U>
 LIBC_INLINE void Port<T>::send_and_recv(F fill, U use) {
   send(fill);
   recv(use);
@@ -213,7 +214,9 @@ LIBC_INLINE void Port<T>::send_and_recv(F fill, U use) {
 /// Combines a receive and send operation into a single function. The \p work
 /// function modifies the buffer in-place and the send is only used to initiate
 /// the copy back.
-template <bool T, typename W> LIBC_INLINE void Port<T>::recv_and_send(W work) {
+template <bool T>
+template <typename W>
+LIBC_INLINE void Port<T>::recv_and_send(W work) {
   recv(work);
   send([](Buffer *) { /* no-op */ });
 }
@@ -238,7 +241,9 @@ LIBC_INLINE void Port<T>::send_n(const void *src, uint64_t size) {
 /// Receives an arbitrarily sized data buffer across the shared channel in
 /// multiples of the packet length. The \p alloc function is called with the
 /// size of the data so that we can initialize the size of the \p dst buffer.
-template <bool T, typename A> LIBC_INLINE void Port<T>::recv_n(A alloc) {
+template <bool T>
+template <typename A>
+LIBC_INLINE void Port<T>::recv_n(A alloc) {
   uint64_t size = 0;
   recv([&](Buffer *buffer) { size = buffer->data[0]; });
   uint8_t *dst = reinterpret_cast<uint8_t *>(alloc(size));
