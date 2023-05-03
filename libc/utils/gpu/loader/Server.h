@@ -28,6 +28,13 @@ void handle_server() {
   if (!port)
     return;
 
+  struct close {
+    using Port = decltype(port);
+    close(Port &port) : port(port) {}
+    ~close() { port->close(); }
+    Port &port;
+  } closer(port);
+
   switch (port->get_opcode()) {
   case __llvm_libc::rpc::Opcode::PRINT_TO_STDERR: {
     uint64_t str_size;
@@ -57,6 +64,5 @@ void handle_server() {
     port->recv([](__llvm_libc::rpc::Buffer *) { /* no-op */ });
     return;
   }
-  port->close();
 }
 #endif
