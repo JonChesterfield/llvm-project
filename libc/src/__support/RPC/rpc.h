@@ -89,8 +89,8 @@ template <bool InvertInbox> struct Process {
   /// Inverting the bits loaded from the inbox in exactly one of the pair of
   /// processes means that each can use the same state transitions.
   /// Whichever process has InvertInbox==false is the initial owner.
-  /// Inbox==Outbox => current process owns the buffer
-  /// Inbox!=Outbox => current process does not own the buffer
+  /// Inbox equal Outbox => current process owns the buffer
+  /// Inbox difer Outbox => current process does not own the buffer
   /// At startup, memory is zero initialised and raw loads of either mailbox
   /// would return zero. Thus both would succeed in opening a port and data
   /// races result. If either inbox or outbox is inverted for one process, that
