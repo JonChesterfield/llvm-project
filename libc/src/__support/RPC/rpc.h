@@ -100,16 +100,6 @@ template <bool InvertInbox> struct Process {
     uint32_t i = inbox[index].load(cpp::MemoryOrder::RELAXED);
     return InvertInbox ? !i : i;
   }
-
-  /// Determines if this process owns the buffer for a send.
-  LIBC_INLINE static bool can_send_data(uint32_t in, uint32_t out) {
-    return in == out;
-  }
-
-  /// Determines if this process owns the buffer for a receive.
-  LIBC_INLINE static bool can_recv_data(uint32_t in, uint32_t out) {
-    return in == out;
-  }
 };
 
 /// The port provides the interface to communicate between the multiple
@@ -174,7 +164,7 @@ template <bool T> template <typename F> LIBC_INLINE void Port<T>::send(F fill) {
   uint32_t in = process.load_inbox(index);
 
   // We need to wait until we own the buffer before sending.
-  while (!Process<T>::can_send_data(in, out)) {
+  while (in != out) {
     sleep_briefly();
     in = process.load_inbox(index);
   }
@@ -191,7 +181,7 @@ template <bool T> template <typename U> LIBC_INLINE void Port<T>::recv(U use) {
   uint32_t in = process.load_inbox(index);
 
   // We need to wait until we own the buffer before receiving.
-  while (!Process<T>::can_recv_data(in, out)) {
+  while (in != out) {
     sleep_briefly();
     in = process.load_inbox(index);
   }
@@ -274,7 +264,7 @@ LIBC_INLINE cpp::optional<Client::Port> Client::try_open(uint16_t opcode) {
 
   // Once we acquire the index we need to check if we are in a valid sending
   // state.
-  if (!can_send_data(in, out)) {
+  if (in != out) {
     lock->store(0, cpp::MemoryOrder::RELAXED);
     return cpp::nullopt;
   }
@@ -300,7 +290,7 @@ LIBC_INLINE cpp::optional<Server::Port> Server::try_open() {
 
   // The server is passive, if there is no work pending don't bother
   // opening a port.
-  if (!can_recv_data(in, out))
+  if (in != out)
     return cpp::nullopt;
 
   // Attempt to acquire the lock on this index.
@@ -313,7 +303,7 @@ LIBC_INLINE cpp::optional<Server::Port> Server::try_open() {
   in = load_inbox(index);
   out = outbox->load(cpp::MemoryOrder::RELAXED);
 
-  if (!can_recv_data(in, out)) {
+  if (in != out) {
     lock->store(0, cpp::MemoryOrder::RELAXED);
     return cpp::nullopt;
   }
