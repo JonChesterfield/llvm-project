@@ -149,10 +149,16 @@ public:
     return InvertInbox ? !i : i;
   }
 
+  /// Retrieve the outbox state from memory shared between processes.
+  /// Never needs to invert the associated read.
   LIBC_INLINE uint32_t load_outbox(uint64_t index) {
     return outbox[index].load(cpp::MemoryOrder::RELAXED);
   }
 
+  /// Signal to the other process that this one is finished with the buffer.
+  /// Equivalent to loading outbox followed by store of the inverted value
+  /// The outbox is write only by this warp and tracking the value locally is
+  /// cheaper than calling load_outbox to get the value to store.
   LIBC_INLINE uint32_t invert_outbox(uint64_t index, uint32_t current_outbox) {
     uint32_t inverted_outbox = !current_outbox;
     outbox[index].store(inverted_outbox, cpp::MemoryOrder::RELAXED);
