@@ -104,15 +104,13 @@ template <bool InvertInbox> struct Process {
   LIBC_INLINE Process &operator=(Process &&) = default;
   LIBC_INLINE ~Process() = default;
 
-  enum { maximum_port_count = 128 };
-
   uint64_t port_count;
   uint32_t lane_size;
   cpp::Atomic<uint32_t> *inbox;
   cpp::Atomic<uint32_t> *outbox;
   Packet *packet;
 
-  cpp::Atomic<uint32_t> lock[maximum_port_count] = {0};
+  cpp::Atomic<uint32_t> lock[default_port_count] = {0};
 
   /// Initialize the communication channels.
   LIBC_INLINE void reset(uint64_t port_count, uint32_t lane_size, void *inbox,
