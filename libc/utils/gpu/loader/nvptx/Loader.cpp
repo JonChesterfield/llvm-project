@@ -248,24 +248,20 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
 
   uint64_t port_size = __llvm_libc::rpc::default_port_count;
   uint32_t warp_size = 32;
-  void *server_inbox =
-      allocator(port_size * sizeof(__llvm_libc::cpp::Atomic<int>));
-  void *server_outbox =
-      allocator(port_size * sizeof(__llvm_libc::cpp::Atomic<int>));
-  void *buffer = allocator(
-      port_size * align_up(sizeof(__llvm_libc::rpc::Header) +
-                               (warp_size * sizeof(__llvm_libc::rpc::Buffer)),
-                           alignof(__llvm_libc::rpc::Packet)));
-  if (!server_inbox || !server_outbox || !buffer)
+
+  uint64_t shared_state_size =
+      __llvm_libc::rpc::Server::allocation_size(port_size, warp_size);
+  void *shared_state = allocator(shared_state_size);
+
+  if (!shared_state)
     handle_error("Failed to allocate memory the RPC client / server.");
 
   // Initialize the RPC server's buffer for host-device communication.
-  server.reset(port_size, warp_size, server_inbox, server_outbox, buffer);
+  server.reset(port_size, warp_size, shared_state);
 
   LaunchParameters single_threaded_params = {1, 1, 1, 1, 1, 1};
   // Call the kernel to
-  begin_args_t init_args = {argc,          dev_argv,     dev_envp,
-                            server_outbox, server_inbox, buffer};
+  begin_args_t init_args = {argc, dev_argv, dev_envp, shared_state};
   if (CUresult err = launch_kernel(binary, stream, single_threaded_params,
                                    "_begin", init_args))
     handle_error(err);
@@ -295,11 +291,7 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
     handle_error(err);
   if (CUresult err = cuMemFreeHost(dev_argv))
     handle_error(err);
-  if (CUresult err = cuMemFreeHost(server_inbox))
-    handle_error(err);
-  if (CUresult err = cuMemFreeHost(server_outbox))
-    handle_error(err);
-  if (CUresult err = cuMemFreeHost(buffer))
+  if (CUresult err = cuMemFreeHost(shared_state))
     handle_error(err);
 
   // Destroy the context and the loaded binary.

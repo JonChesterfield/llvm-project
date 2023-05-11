@@ -28,9 +28,7 @@ struct begin_args_t {
   int argc;
   void *argv;
   void *envp;
-  void *inbox;
-  void *outbox;
-  void *buffer;
+  void *shared_state;
 };
 
 /// The arguments to the '_start' kernel.
