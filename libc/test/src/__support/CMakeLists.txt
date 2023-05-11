@@ -103,6 +103,16 @@ add_libc_test(
     libc.src.__support.char_vector
 )
 
+add_libc_test(
+  rpc_process_test
+  SUITE
+    libc-support-tests
+  SRCS
+    rpc_process_test.cpp
+  DEPENDS
+    libc.src.__support.common
+)
+
 add_executable(
   libc_str_to_float_comparison_test
   str_to_float_comparison_test.cpp
