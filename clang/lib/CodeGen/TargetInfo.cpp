@@ -7284,7 +7284,12 @@ void NVPTXABIInfo::computeInfo(CGFunctionInfo &FI) const {
 
 Address NVPTXABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                 QualType Ty) const {
-  llvm_unreachable("NVPTX does not support varargs");
+
+  bool IsIndirect = false;
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
+                          getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(4),
+                          /*AllowHigherAlign=*/true);
 }
 
 void NVPTXTargetCodeGenInfo::setTargetAttributes(
@@ -9275,7 +9280,11 @@ void AMDGPUABIInfo::computeInfo(CGFunctionInfo &FI) const {
 
 Address AMDGPUABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
-  llvm_unreachable("AMDGPU does not support varargs");
+  bool IsIndirect = false;
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
+                          getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(4),
+                          /*AllowHigherAlign=*/true);
 }
 
 ABIArgInfo AMDGPUABIInfo::classifyReturnType(QualType RetTy) const {
