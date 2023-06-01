@@ -57,7 +57,7 @@ FunctionPass *createAMDGPUPropagateAttributesEarlyPass(const TargetMachine *);
 ModulePass *createAMDGPUPropagateAttributesLatePass(const TargetMachine *);
 FunctionPass *createAMDGPURewriteOutArgumentsPass();
 ModulePass *createAMDGPULowerModuleLDSPass();
-FunctionPass *createExpandVAIntrinsicsPass();
+ModulePass *createExpandVAIntrinsicsPass();
 FunctionPass *createSIModeRegisterPass();
 FunctionPass *createGCNPreRAOptimizationsPass();
 
@@ -155,7 +155,7 @@ void initializeExpandVAIntrinsicsPass(PassRegistry &);
 extern char &ExpandVAIntrinsicsID;
 
 struct ExpandVAIntrinsicsPass : PassInfoMixin<ExpandVAIntrinsicsPass> {
-  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
 void initializeAMDGPURewriteOutArgumentsPass(PassRegistry &);

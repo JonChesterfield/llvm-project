@@ -629,14 +629,16 @@ void AMDGPUTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           PM.addPass(AMDGPUCtorDtorLoweringPass());
           return true;
         }
+        if (PassName == "expand-va-intrinsics") {
+          PM.addPass(ExpandVAIntrinsicsPass());
+          return true;
+        }
         return false;
       });
 
   PB.registerPipelineParsingCallback(
       [this](StringRef PassName, FunctionPassManager &PM,
              ArrayRef<PassBuilder::PipelineElement>) {
-        report_fatal_error("Does not run?");
-
         if (PassName == "amdgpu-simplifylib") {
           PM.addPass(AMDGPUSimplifyLibCallsPass(*this));
           return true;
@@ -675,10 +677,6 @@ void AMDGPUTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         }
         if (PassName == "amdgpu-codegenprepare") {
           PM.addPass(AMDGPUCodeGenPreparePass(*this));
-          return true;
-        }
-        if (PassName == "expand-va-intrinsics") {
-          PM.addPass(ExpandVAIntrinsicsPass());
           return true;
         }
         return false;

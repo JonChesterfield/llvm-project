@@ -22,18 +22,19 @@ using namespace llvm;
 
 namespace {
 
-class ExpandVAIntrinsics : public FunctionPass {
+class ExpandVAIntrinsics : public ModulePass {
 public:
   static char ID;
 
-  ExpandVAIntrinsics() : FunctionPass(ID) {
+  ExpandVAIntrinsics() : ModulePass(ID) {
     initializeExpandVAIntrinsicsPass(*PassRegistry::getPassRegistry());
   }
 
   Function *cloneWithoutVararg(Function *F) {
+    // see Attributor::internalizeFunctions
+    
     auto &Ctx = F->getContext();
     // Intrinsic::ID ID = F->getIntrinsicID();
-    ValueToValueMapTy VMap;
     ClonedCodeInfo CodeInfo;
 
     std::vector<Type *> ArgTypes;
@@ -41,11 +42,12 @@ public:
     for (const Argument &I : F->args())
       ArgTypes.push_back(I.getType());
 
+    // Append a void*, size_t pair (todo, drop the 64 assumption)
     ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
     ArgTypes.push_back(Type::getInt64Ty(Ctx));
 
     FunctionType *FTy = FunctionType::get(F->getFunctionType()->getReturnType(),
-                                          ArgTypes, false);
+                                          ArgTypes, /*IsVarArgs*/ false);
 
     // Create the new function...
     Function *NewF =
@@ -58,6 +60,7 @@ public:
     for (const Argument &I : F->args())
       DestI->setName(I.getName()); // Copy the name over...
 
+    ValueToValueMapTy VMap;
     SmallVector<ReturnInst *, 8> Returns; // Ignore returns cloned.
     CloneFunctionInto(NewF, F, VMap, CloneFunctionChangeType::LocalChangesOnly,
                       Returns, "", &CodeInfo);
@@ -65,51 +68,50 @@ public:
     return NewF;
   }
 
-  bool runOnFunction(Function &F) override {
+  bool runOnModule(Module &M) override {
+    // Function pass doesn't get called on declarations
     bool Changed = false;
-    fprintf(stderr, "Pass exists\n");
 
-    if (F.isVarArg()) {
-      fprintf(stdout, "It's variadic\n");
-      F.dump();
+    for (Function &F : M) {
+    
+    fprintf(stderr, "Run on function %s\n",  F.getName().str().c_str());
+    
+    if (!F.isVarArg()) {
+      // vararg intrinsics are only meaningful in vararg functions
+      return false;
+    }
 
-      fprintf(stdout, "arg size %zu\n", F.arg_size());
-      F.getFunctionType()->dump();
+    
 
-      Type *retType = F.getFunctionType()->getReturnType();
-      retType->dump();
+    fprintf(stdout, "It's variadic\n");
+    // F.dump();
 
-      ArrayRef<Type *> params = F.getFunctionType()->params();
-
-      // Takes dead argument elimination about 1000 lines to get this done which
-      // seems excessive
-      printf("nonvararg equivalent\n");
-      FunctionType *nonvararg = FunctionType::get(retType, params, false);
-      nonvararg->dump();
 
       for (auto &Arg : F.args()) {
         Arg.dump();
       }
 
-      printf("clone without vararg\n");
-      Function *n = cloneWithoutVararg(&F);
-      n->dump();
 
       printf("walkies\n");
-      for (BasicBlock &BB : *n) {
+      for (BasicBlock &BB : F) {
         for (Instruction &I : BB) {
+          
           if (VAStartInst *II = dyn_cast<VAStartInst>(&I)) {
             printf("start\n");
             Value *args = II->getArgList();
             II->dump();
             args->dump();
+            continue;
           }
+          
           if (VAEndInst *II = dyn_cast<VAEndInst>(&I)) {
             printf("end\n");
             Value *args = II->getArgList();
             II->dump();
             args->dump();
+            continue;
           }
+          
           if (VACopyInst *II = dyn_cast<VACopyInst>(&I)) {
             printf("copy\n");
             Value *dst = II->getDest();
@@ -117,22 +119,37 @@ public:
             II->dump();
             dst->dump();
             src->dump();
+            continue;
           }
+
+          
         }
       }
+
+      exit (1);
+#if 0
+      // Takes dead argument elimination about 1000 lines to get this done which
+      // seems excessive
+      printf("nonvararg equivalent\n");
+      Type *retType = F.getFunctionType()->getReturnType();
+      ArrayRef<Type *> params = F.getFunctionType()->params();
+      FunctionType *nonvararg = FunctionType::get(retType, params, false);
+      nonvararg->dump();
+
+
+      printf("clone without vararg\n");
+      Function *n = cloneWithoutVararg(&F);
+      n->dump();
 
       printf("uses\n");
       for (Use &U : n->uses()) {
         U->dump();
       }
-      
-      exit(42);
-    } else {
-
-      fprintf(stderr, "It's not variadic\n");
-    }
-
+#endif     
+    
+  }
     return Changed;
+        
   }
 };
 } // namespace
@@ -144,12 +161,12 @@ INITIALIZE_PASS(ExpandVAIntrinsics, DEBUG_TYPE,
                 "Expand VA intrinsics", false,
                 false)
 
-FunctionPass *llvm::createExpandVAIntrinsicsPass() {
+ModulePass *llvm::createExpandVAIntrinsicsPass() {
   return new ExpandVAIntrinsics();
 }
 
-PreservedAnalyses ExpandVAIntrinsicsPass::run(Function &F,
-                                              FunctionAnalysisManager &) {
-  return ExpandVAIntrinsics().runOnFunction(F) ? PreservedAnalyses::none()
+PreservedAnalyses ExpandVAIntrinsicsPass::run(Module &M,
+                                              ModuleAnalysisManager &) {
+  return ExpandVAIntrinsics().runOnModule(M) ? PreservedAnalyses::none()
                                                : PreservedAnalyses::all();
 }
