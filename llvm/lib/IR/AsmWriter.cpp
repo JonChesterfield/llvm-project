@@ -2851,12 +2851,13 @@ void AssemblyWriter::printModule(const Module *M) {
   for (const GlobalIFunc &GI : M->ifuncs())
     printIFunc(&GI);
 
+  Out << "\ndump before functions\n";
   // Output all of the functions.
   for (const Function &F : *M) {
     Out << '\n';
     printFunction(&F);
   }
-
+  Out << "\ndump after functions\n";
   // Output global use-lists.
   printUseLists(nullptr);
 

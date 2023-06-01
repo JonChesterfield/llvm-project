@@ -70,11 +70,44 @@ public:
 
   bool runOnModule(Module &M) override {
     // Function pass doesn't get called on declarations
+    // F : M doesn't seem to either
     bool Changed = false;
 
-    for (Function &F : M) {
+    M.dump();
+    
+    fprintf(stderr, "Got global:\n");
+    for (auto &GV : M.globals()) {
+    fprintf(stderr, "Got a global %s\n",  GV.getName().str().c_str());
+    }
+
+    fprintf(stderr, "Got const func:\n");
+    for (const Function &GV : M) {
+      fprintf(stderr, "Got a const function %s\n",  GV.getName().str().c_str());
+    }
+
+    fprintf(stderr, "Got mutable function:\n");
+    for (Function &GV : M) {
+      fprintf(stderr, "Got mutable function %s\n",  GV.getName().str().c_str());
+    }
+
+    
+    fprintf(stderr, "Got ifuncs:\n");
+    for (auto &X : M.ifuncs()) {
+    fprintf(stderr, "Got a ifunc %s\n",  X.getName().str().c_str());
+    }
+
+
+    fprintf(stderr, "Got functions:\n");
+    for (Function &F : M.functions()) {
     
     fprintf(stderr, "Run on function %s\n",  F.getName().str().c_str());
+
+    if (F.isDeclaration()) {
+      fprintf(stderr, "Run on declaration\n");
+    } else {
+      fprintf(stderr, "Run on definition\n");
+    }
+    
     
     if (!F.isVarArg()) {
       // vararg intrinsics are only meaningful in vararg functions
