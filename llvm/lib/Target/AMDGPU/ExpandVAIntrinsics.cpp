@@ -6,12 +6,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/IR/Constants.h"
 
 #include "AMDGPU.h" // wherever initializeExpandVAIntrinsicsPass is
 
@@ -31,64 +31,30 @@ public:
     initializeExpandVAIntrinsicsPass(*PassRegistry::getPassRegistry());
   }
 
-  Function *cloneWithoutVararg(Function *F) {
-    // see Attributor::internalizeFunctions
-    
-    auto &Ctx = F->getContext();
-    // Intrinsic::ID ID = F->getIntrinsicID();
-    ClonedCodeInfo CodeInfo;
-
-    std::vector<Type *> ArgTypes;
-
-    for (const Argument &I : F->args())
-      ArgTypes.push_back(I.getType());
-
-    // Append a void*, size_t pair (todo, drop the 64 assumption)
-    ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
-    ArgTypes.push_back(Type::getInt64Ty(Ctx));
-
-    FunctionType *FTy = FunctionType::get(F->getFunctionType()->getReturnType(),
-                                          ArgTypes, /*IsVarArgs*/ false);
-
-    // Create the new function...
-    Function *NewF =
-        Function::Create(FTy, F->getLinkage(), F->getAddressSpace(),
-                         F->getName(), F->getParent());
-    
-    // Loop over the arguments, copying the names of the mapped arguments
-    // over...
-    Function::arg_iterator DestI = NewF->arg_begin();
-    for (const Argument &I : F->args())
-      DestI->setName(I.getName()); // Copy the name over...
-
-    ValueToValueMapTy VMap;
-    SmallVector<ReturnInst *, 8> Returns; // Ignore returns cloned.
-    CloneFunctionInto(NewF, F, VMap, CloneFunctionChangeType::LocalChangesOnly,
-                      Returns, "", &CodeInfo);
-
-    return NewF;
-  }
-
   bool runOnModule(Module &M) override {
     auto &Ctx = M.getContext();
     // Plan.
-    // 
-    
-    
+    //
+
     // Can't use runOnFunction because ModuleToFunctionPassAdapater::run skips
     // over declarations.
-    
+
     bool Changed = false;
 
-
-    // Find calls to varargs functions and hack with them, and then change the varargs functions
-    // means the IR is valid in the intermediate phase, might expose that for testing.
+    // Find calls to varargs functions and hack with them, and then change the
+    // varargs functions means the IR is valid in the intermediate phase, might
+    // expose that for testing.
 
     // derived from DAE mostly
     // patch every call site to a variadic function
+
+    fprintf(stderr, "Rewrite call instructions\n");
     for (Function &F : M.functions()) {
       if (!F.isVarArg())
         continue;
+
+      fprintf(stderr, "Rewrite calls to %s\n", F.getName().str().c_str());
+
       FunctionType *FTy = F.getFunctionType();
       std::vector<Type *> Params(FTy->param_begin(), FTy->param_end());
       unsigned NumArgs = Params.size();
@@ -102,19 +68,18 @@ public:
         if (!CB)
           continue;
 
-        
         fprintf(stderr, "Call inst %s\n", CB->getName().str().c_str());
         CB->dump();
-        
-        // TODO: Deal with attributes on the varargs part, see DAE
-        std::vector<Value *> Args;
-        Args.assign(CB->arg_begin(), CB->arg_begin() + NumArgs);        
 
-        // Need to make the struct and stash things in it, passing a null for now
+        // TODO: Deal with attributes on the varargs part, see DAE
+        // Need to make the struct and stash things in it, passing a null for
+        // now
+
+        std::vector<Value *> Args;
+        Args.assign(CB->arg_begin(), CB->arg_begin() + NumArgs);
 
         Args.push_back(ConstantPointerNull::get(Type::getInt8PtrTy(Ctx)));
         Args.push_back(ConstantInt::get(Type::getInt64Ty(Ctx), 42));
-          
 
         SmallVector<OperandBundleDef, 1> OpBundles;
         CB->getOperandBundlesAsDefs(OpBundles);
@@ -122,154 +87,115 @@ public:
         // Make a new call instruction
         CallBase *NewCB = nullptr;
         if (InvokeInst *II = dyn_cast<InvokeInst>(CB)) {
-          NewCB = InvokeInst::Create(&F, II->getNormalDest(), II->getUnwindDest(),
-                                     Args, OpBundles, "", CB);
+          NewCB =
+              InvokeInst::Create(&F, II->getNormalDest(), II->getUnwindDest(),
+                                 Args, OpBundles, "", CB);
         } else {
           NewCB = CallInst::Create(&F, Args, OpBundles, "", CB);
           cast<CallInst>(NewCB)->setTailCallKind(
-                                                 cast<CallInst>(CB)->getTailCallKind());
+              cast<CallInst>(CB)->getTailCallKind());
         }
         NewCB->setCallingConv(CB->getCallingConv());
         NewCB->copyMetadata(*CB, {LLVMContext::MD_prof, LLVMContext::MD_dbg});
 
-        // attributes
+        // todo: attributes
 
         Args.clear();
         if (!CB->use_empty())
           CB->replaceAllUsesWith(NewCB);
         NewCB->takeName(CB);
         CB->eraseFromParent();
-        
+
         fprintf(stderr, "Replacement %s\n", NewCB->getName().str().c_str());
         NewCB->dump();
-
+      }
     }
-    }
-    
 
-    for (Function &F : M.functions()) {
+    fprintf(stderr, "Rewrite functions\n");
+    for (Function &F : llvm::make_early_inc_range(M)) {
       if (!F.isVarArg()) {
         continue;
       }
 
-      if (F.isDeclaration()) {
-        fprintf(stderr, "Run on declaration %s\n",  F.getName().str().c_str());
+      fprintf(stderr, "Rewrite decl/defn of %s\n", F.getName().str().c_str());
 
-            std::vector<Type *> ArgTypes;
+      std::vector<Type *> ArgTypes;
 
-            for (const Argument &I : F.args())
-              ArgTypes.push_back(I.getType());
+      for (const Argument &I : F.args())
+        ArgTypes.push_back(I.getType());
 
-            ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
-            ArgTypes.push_back(Type::getInt64Ty(Ctx));
+      ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
+      ArgTypes.push_back(Type::getInt64Ty(Ctx));
 
-            FunctionType *FTy = FunctionType::get(F.getFunctionType()->getReturnType(),
-                                                  ArgTypes, /*IsVarArgs*/ false);
+      FunctionType *FTy = FunctionType::get(
+          F.getFunctionType()->getReturnType(), ArgTypes, /*IsVarArgs*/ false);
 
+      // New function goes in the same place as the one being replaced
+      Function *NF = Function::Create(FTy, F.getLinkage(), F.getAddressSpace());
 
+      NF->copyAttributesFrom(&F);
+      NF->setComdat(F.getComdat());
+      F.getParent()->getFunctionList().insert(F.getIterator(), NF);
+      NF->takeName(&F);
 
-            Function *NewF =
-              Function::Create(FTy, F.getLinkage(), F.getAddressSpace(),
-                               F.getName(), F.getParent());
+      // metadata too
+      SmallVector<std::pair<unsigned, MDNode *>, 1> MDs;
+      F.getAllMetadata(MDs);
+      for (auto [KindID, Node] : MDs)
+        NF->addMetadata(KindID, *Node);
 
-
-            fprintf(stderr, "prev\n");
-            F.dump();
-            fprintf(stderr, "repl\n");
-            NewF->dump();
-
-            // Need to copy more stuff across and replaceall.
-            F.replaceAllUsesWith(NewF);
-            NewF->takeName(&F);
-            
-            fprintf(stderr, "prev.2\n");
-            F.dump();
-            fprintf(stderr, "repl.2\n");
-            NewF->dump();
-
-            
-      }
-      
       if (!F.isDeclaration()) {
-        fprintf(stderr, "Run on definition %s\n",  F.getName().str().c_str());
-      }
-    
 
-      // The vararg intrinsics are found in vararg instructions, skip the
-      // walk over instructions for others.
-      
-      if (!F.isVarArg()) {
-        // vararg intrinsics are only meaningful in vararg functions
-        return false;
-      }
+        fprintf(stderr, "Extra things needed for definition %s\n",
+                NF->getName().str().c_str());
 
-    fprintf(stdout, "It's variadic\n");
-    // F.dump();
+        // Claim the blocks
+        // Iterating over them in the new setting so that the
+        // additional arguments can be referenced
+        NF->splice(NF->begin(), &F);
 
+        printf("walkies\n");
+        for (BasicBlock &BB : *NF) {
+          for (Instruction &I : BB) {
 
-      for (auto &Arg : F.args()) {
-        Arg.dump();
-      }
+            if (VAStartInst *II = dyn_cast<VAStartInst>(&I)) {
+              printf("start\n");
+              II->dump();
+              Value *args = II->getArgList();
+              args->dump();
+              continue;
+            }
 
+            if (VAEndInst *II = dyn_cast<VAEndInst>(&I)) {
+              printf("end\n");
+              II->dump();
+              Value *args = II->getArgList();
+              args->dump();
+              continue;
+            }
 
-      printf("walkies\n");
-      for (BasicBlock &BB : F) {
-        for (Instruction &I : BB) {
-          
-          if (VAStartInst *II = dyn_cast<VAStartInst>(&I)) {
-            printf("start\n");
-            II->dump();
-            Value *args = II->getArgList();
-            args->dump();
-            continue;
+            if (VACopyInst *II = dyn_cast<VACopyInst>(&I)) {
+              printf("copy\n");
+              II->dump();
+              Value *dst = II->getDest();
+              Value *src = II->getSrc();
+              dst->dump();
+              src->dump();
+              continue;
+            }
           }
-          
-          if (VAEndInst *II = dyn_cast<VAEndInst>(&I)) {
-            printf("end\n");
-            II->dump();
-            Value *args = II->getArgList();
-            args->dump();
-            continue;
-          }
-          
-          if (VACopyInst *II = dyn_cast<VACopyInst>(&I)) {
-            printf("copy\n");
-            II->dump();
-            Value *dst = II->getDest();
-            Value *src = II->getSrc();
-            dst->dump();
-            src->dump();
-            continue;
-          }
-
-          
         }
       }
 
-      exit (1);
-#if 0
-      // Takes dead argument elimination about 1000 lines to get this done which
-      // seems excessive
-      printf("nonvararg equivalent\n");
-      Type *retType = F.getFunctionType()->getReturnType();
-      ArrayRef<Type *> params = F.getFunctionType()->params();
-      FunctionType *nonvararg = FunctionType::get(retType, params, false);
-      nonvararg->dump();
+      // DAE bitcasts it, todo: check block addresses
+      // This fails to update call instructions, unfortunately
+      // It may therefore also fail to update globals
+      F.replaceAllUsesWith(NF);
 
+      F.eraseFromParent();
+    }
 
-      printf("clone without vararg\n");
-      Function *n = cloneWithoutVararg(&F);
-      n->dump();
-
-      printf("uses\n");
-      for (Use &U : n->uses()) {
-        U->dump();
-      }
-#endif     
-    
-  }
     return Changed;
-        
   }
 };
 } // namespace
@@ -277,8 +203,7 @@ char ExpandVAIntrinsics::ID = 0;
 
 char &llvm::ExpandVAIntrinsicsID = ExpandVAIntrinsics::ID;
 
-INITIALIZE_PASS(ExpandVAIntrinsics, DEBUG_TYPE,
-                "Expand VA intrinsics", false,
+INITIALIZE_PASS(ExpandVAIntrinsics, DEBUG_TYPE, "Expand VA intrinsics", false,
                 false)
 
 ModulePass *llvm::createExpandVAIntrinsicsPass() {
@@ -288,5 +213,5 @@ ModulePass *llvm::createExpandVAIntrinsicsPass() {
 PreservedAnalyses ExpandVAIntrinsicsPass::run(Module &M,
                                               ModuleAnalysisManager &) {
   return ExpandVAIntrinsics().runOnModule(M) ? PreservedAnalyses::none()
-                                               : PreservedAnalyses::all();
+                                             : PreservedAnalyses::all();
 }
