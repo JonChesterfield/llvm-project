@@ -166,7 +166,6 @@ bool DeadArgumentEliminationPass::deleteDeadVarargs(Function &F) {
   std::vector<Type *> Params(FTy->param_begin(), FTy->param_end());
   FunctionType *NFTy = FunctionType::get(FTy->getReturnType(), Params, false);
   unsigned NumArgs = Params.size();
-
   // Create the new function body and insert it into the module...
   Function *NF = Function::Create(NFTy, F.getLinkage(), F.getAddressSpace());
   NF->copyAttributesFrom(&F);

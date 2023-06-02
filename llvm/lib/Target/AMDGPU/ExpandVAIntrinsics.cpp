@@ -59,7 +59,7 @@ public:
       std::vector<Type *> ArgTypes;
       for (const Argument &I : F.args())
         ArgTypes.push_back(I.getType());
-      unsigned NumArgs = ArgTypes.size();
+      unsigned NumFixedArgs = ArgTypes.size();
       ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
       ArgTypes.push_back(Type::getInt64Ty(Ctx));
 
@@ -94,7 +94,7 @@ public:
         // now
 
         std::vector<Value *> Args;
-        Args.assign(CB->arg_begin(), CB->arg_begin() + NumArgs);
+        Args.assign(CB->arg_begin(), CB->arg_begin() + NumFixedArgs);
 
         Args.push_back(ConstantPointerNull::get(Type::getInt8PtrTy(Ctx)));
         Args.push_back(ConstantInt::get(Type::getInt64Ty(Ctx), 42));
@@ -134,7 +134,15 @@ public:
         // additional arguments can be referenced
         NF->splice(NF->begin(), &F);
 
-        printf("walkies\n");
+        assert(NF->arg_size() == NumFixedArgs + 2);
+
+        Argument *StructPtr = NF->getArg(NumFixedArgs);
+        Argument *StructSize = NF->getArg(NumFixedArgs + 1);
+
+        printf("walkies, w/ ptr & size:\n");
+        StructPtr->dump();
+        StructSize->dump();
+
         for (BasicBlock &BB : *NF) {
           for (Instruction &I : BB) {
 

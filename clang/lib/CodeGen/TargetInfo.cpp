@@ -302,6 +302,10 @@ static llvm::Value *emitRoundPointerUpToAlignment(CodeGenFunction &CGF,
   // OverflowArgArea = (OverflowArgArea + Align - 1) & -Align;
   llvm::Value *RoundUp = CGF.Builder.CreateConstInBoundsGEP1_32(
       CGF.Builder.getInt8Ty(), Ptr, Align.getQuantity() - 1);
+
+  // TODO: It really should be possible to get the right addrspace annotation on the gep directly
+  RoundUp = CGF.Builder.CreatePointerBitCastOrAddrSpaceCast(RoundUp, CGF.AllocaInt8PtrTy);
+  
   return CGF.Builder.CreateIntrinsic(
       llvm::Intrinsic::ptrmask, {CGF.AllocaInt8PtrTy, CGF.IntPtrTy},
       {RoundUp, llvm::ConstantInt::get(CGF.IntPtrTy, -Align.getQuantity())},
@@ -333,6 +337,7 @@ static Address emitVoidPtrDirectVAArg(CodeGenFunction &CGF,
                                       CharUnits SlotSize,
                                       bool AllowHigherAlign,
                                       bool ForceRightAdjust = false) {
+
   // Cast the element type to i8* if necessary.  Some platforms define
   // va_list as a struct containing an i8* instead of just an i8*.
   if (VAListAddr.getElementType() != CGF.Int8PtrTy)
@@ -348,7 +353,7 @@ static Address emitVoidPtrDirectVAArg(CodeGenFunction &CGF,
   } else {
     Addr = Address(Ptr, CGF.Int8Ty, SlotSize);
   }
-
+  
   // Advance the pointer past the argument, then store that back.
   CharUnits FullDirectSize = DirectSize.alignTo(SlotSize);
   Address NextPtr =
@@ -9281,6 +9286,7 @@ void AMDGPUABIInfo::computeInfo(CGFunctionInfo &FI) const {
 Address AMDGPUABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
   bool IsIndirect = false;
+  // allowhigheralign requires an addrspace fix in emitRoundPointerUpToAlignment
   return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
                           getContext().getTypeInfoInChars(Ty),
                           CharUnits::fromQuantity(4),
