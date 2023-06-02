@@ -98,7 +98,33 @@ public:
         std::vector<Value *> Args;
         Args.assign(CB->arg_begin(), CB->arg_begin() + NumFixedArgs);
 
-        Args.push_back(ConstantPointerNull::get(Type::getInt8PtrTy(Ctx)));
+
+        std::vector<Value*> Varargs;
+        Varargs.assign(CB->arg_begin() + NumFixedArgs, CB->arg_end());
+        
+        std::vector<Type *> LocalVarTypes;
+        LocalVarTypes.reserve(Varargs.size());
+        std::transform( // globalvariable and valuetype might be better
+                       Varargs.cbegin(), Varargs.cend(), std::back_inserter(LocalVarTypes),
+                       [](const Value *V) -> Type * { return V->getType(); });
+
+        
+        StructType *LDSTy = StructType::create(Ctx, LocalVarTypes, "todo");
+        
+        
+        Builder.SetInsertPoint(CB);
+
+        auto alloced = Builder.CreateAlloca(LDSTy);
+
+        for (size_t i = 0; i < Varargs.size(); i++) {
+          auto r = Builder.CreateStructGEP(LDSTy, alloced, i);
+          auto st = Builder.CreateStore(Varargs[i], r);
+        }
+
+        
+        auto asvoid = Builder.CreatePointerBitCastOrAddrSpaceCast(alloced, Type::getInt8PtrTy(Ctx));
+        
+        Args.push_back(asvoid);
         Args.push_back(ConstantInt::get(Type::getInt64Ty(Ctx), 42));
 
         SmallVector<OperandBundleDef, 1> OpBundles;
