@@ -41,28 +41,46 @@ public:
 
     bool Changed = false;
 
-    // Find calls to varargs functions and hack with them, and then change the
-    // varargs functions means the IR is valid in the intermediate phase, might
-    // expose that for testing.
-
+    // Order of operations is:
+    // Declare functions with the ... arg replaced with a void*,size_t pair
+    // Replace call instructions to the variadics with calls to the new ones
+    // Splice the body of original functions into the new ones
+    // Lower intrinsics with respect to the additional arguments
+    // Delete the remaining parts of the original functions
+    //
     // derived from DAE mostly
-    // patch every call site to a variadic function
 
-    fprintf(stderr, "Rewrite call instructions\n");
-    for (Function &F : M.functions()) {
-      if (!F.isVarArg())
+    for (Function &F : llvm::make_early_inc_range(M)) {
+      if (!F.isVarArg()) {
         continue;
+      }
 
-      fprintf(stderr, "Rewrite calls to %s\n", F.getName().str().c_str());
+      // Get type of replacement function, remember how many fixed args it took
+      std::vector<Type *> ArgTypes;
+      for (const Argument &I : F.args())
+        ArgTypes.push_back(I.getType());
+      unsigned NumArgs = ArgTypes.size();
+      ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
+      ArgTypes.push_back(Type::getInt64Ty(Ctx));
 
-      FunctionType *FTy = F.getFunctionType();
-      std::vector<Type *> Params(FTy->param_begin(), FTy->param_end());
-      unsigned NumArgs = Params.size();
+      FunctionType *FTy = FunctionType::get(
+          F.getFunctionType()->getReturnType(), ArgTypes, /*IsVarArgs*/ false);
 
-      // Append a void*, size_t pair (todo, drop the 64 assumption)
-      Params.push_back(Type::getInt8PtrTy(Ctx));
-      Params.push_back(Type::getInt64Ty(Ctx));
+      // New function goes in the same place as the one being replaced
+      Function *NF = Function::Create(FTy, F.getLinkage(), F.getAddressSpace());
 
+      NF->copyAttributesFrom(&F);
+      NF->setComdat(F.getComdat());
+      F.getParent()->getFunctionList().insert(F.getIterator(), NF);
+      NF->takeName(&F);
+
+      // Copy metadata too
+      SmallVector<std::pair<unsigned, MDNode *>, 1> MDs;
+      F.getAllMetadata(MDs);
+      for (auto [KindID, Node] : MDs)
+        NF->addMetadata(KindID, *Node);
+
+      // Declared the new function, can now create calls to it
       for (User *U : llvm::make_early_inc_range(F.users())) {
         CallBase *CB = dyn_cast<CallBase>(U);
         if (!CB)
@@ -88,10 +106,10 @@ public:
         CallBase *NewCB = nullptr;
         if (InvokeInst *II = dyn_cast<InvokeInst>(CB)) {
           NewCB =
-              InvokeInst::Create(&F, II->getNormalDest(), II->getUnwindDest(),
+              InvokeInst::Create(NF, II->getNormalDest(), II->getUnwindDest(),
                                  Args, OpBundles, "", CB);
         } else {
-          NewCB = CallInst::Create(&F, Args, OpBundles, "", CB);
+          NewCB = CallInst::Create(NF, Args, OpBundles, "", CB);
           cast<CallInst>(NewCB)->setTailCallKind(
               cast<CallInst>(CB)->getTailCallKind());
         }
@@ -109,46 +127,8 @@ public:
         fprintf(stderr, "Replacement %s\n", NewCB->getName().str().c_str());
         NewCB->dump();
       }
-    }
-
-    fprintf(stderr, "Rewrite functions\n");
-    for (Function &F : llvm::make_early_inc_range(M)) {
-      if (!F.isVarArg()) {
-        continue;
-      }
-
-      fprintf(stderr, "Rewrite decl/defn of %s\n", F.getName().str().c_str());
-
-      std::vector<Type *> ArgTypes;
-
-      for (const Argument &I : F.args())
-        ArgTypes.push_back(I.getType());
-
-      ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
-      ArgTypes.push_back(Type::getInt64Ty(Ctx));
-
-      FunctionType *FTy = FunctionType::get(
-          F.getFunctionType()->getReturnType(), ArgTypes, /*IsVarArgs*/ false);
-
-      // New function goes in the same place as the one being replaced
-      Function *NF = Function::Create(FTy, F.getLinkage(), F.getAddressSpace());
-
-      NF->copyAttributesFrom(&F);
-      NF->setComdat(F.getComdat());
-      F.getParent()->getFunctionList().insert(F.getIterator(), NF);
-      NF->takeName(&F);
-
-      // metadata too
-      SmallVector<std::pair<unsigned, MDNode *>, 1> MDs;
-      F.getAllMetadata(MDs);
-      for (auto [KindID, Node] : MDs)
-        NF->addMetadata(KindID, *Node);
 
       if (!F.isDeclaration()) {
-
-        fprintf(stderr, "Extra things needed for definition %s\n",
-                NF->getName().str().c_str());
-
         // Claim the blocks
         // Iterating over them in the new setting so that the
         // additional arguments can be referenced
