@@ -12,6 +12,7 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/IR/IRBuilder.h"
 
 #include "AMDGPU.h" // wherever initializeExpandVAIntrinsicsPass is
 
@@ -49,7 +50,8 @@ public:
     // Delete the remaining parts of the original functions
     //
     // derived from DAE mostly
-
+    IRBuilder<> Builder(Ctx);
+    
     for (Function &F : llvm::make_early_inc_range(M)) {
       if (!F.isVarArg()) {
         continue;
@@ -139,36 +141,33 @@ public:
         Argument *StructPtr = NF->getArg(NumFixedArgs);
         Argument *StructSize = NF->getArg(NumFixedArgs + 1);
 
-        printf("walkies, w/ ptr & size:\n");
-        StructPtr->dump();
-        StructSize->dump();
+        if (0) {
+          printf("walkies, w/ ptr & size:\n");
+          StructPtr->dump();
+          StructSize->dump();
+        }
 
         for (BasicBlock &BB : *NF) {
-          for (Instruction &I : BB) {
-
+          for (Instruction &I : llvm::make_early_inc_range(BB)) {
             if (VAStartInst *II = dyn_cast<VAStartInst>(&I)) {
-              printf("start\n");
-              II->dump();
-              Value *args = II->getArgList();
-              args->dump();
+              Builder.SetInsertPoint(II);
+              Builder.CreateStore(StructPtr, II->getArgList());
+              II->eraseFromParent();
               continue;
             }
 
             if (VAEndInst *II = dyn_cast<VAEndInst>(&I)) {
-              printf("end\n");
-              II->dump();
-              Value *args = II->getArgList();
-              args->dump();
+              II->eraseFromParent();
               continue;
             }
 
             if (VACopyInst *II = dyn_cast<VACopyInst>(&I)) {
-              printf("copy\n");
-              II->dump();
               Value *dst = II->getDest();
-              Value *src = II->getSrc();
-              dst->dump();
-              src->dump();
+              Value *src = II->getSrc();              
+              Builder.SetInsertPoint(II);
+              Value * ld = Builder.CreateLoad(src->getType(), src);
+              Builder.CreateStore(dst, ld);
+              II->eraseFromParent();
               continue;
             }
           }
