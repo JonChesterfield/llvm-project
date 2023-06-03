@@ -601,6 +601,12 @@ namespace llvm {
 
   /// Lowers KCFI operand bundles for indirect calls.
   FunctionPass *createKCFIPass();
+
+  // TODO, comment
+  ModulePass *createExpandVAIntrinsicsPass();
+  // extern char &ExpandVAIntrinsicsID; // might not need this
+
+  
 } // End llvm namespace
 
 #endif

@@ -25,6 +25,7 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/CodeGen/ExpandVAIntrinsics.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Pass.h"
@@ -64,7 +65,7 @@ static cl::opt<bool> UseShortPointersOpt(
     cl::init(false), cl::Hidden);
 
 namespace llvm {
-
+  
 void initializeGenericToNVVMLegacyPassPass(PassRegistry &);
 void initializeNVPTXAllocaHoistingPass(PassRegistry &);
 void initializeNVPTXAssignValidGlobalNamesPass(PassRegistry&);
@@ -261,6 +262,12 @@ void NVPTXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           PM.addPass(GenericToNVVMPass());
           return true;
         }
+
+        if (PassName == "expand-va-intrinsics") {
+          PM.addPass(ExpandVAIntrinsicsPass());
+          return true;
+        }
+
         return false;
       });
 
@@ -377,6 +384,8 @@ void NVPTXPassConfig::addIRPasses() {
     addStraightLineScalarOptimizationPasses();
   }
 
+  addPass(createExpandVAIntrinsicsPass());
+  
   addPass(createAtomicExpandPass());
   addPass(createNVPTXCtorDtorLoweringLegacyPass());
 

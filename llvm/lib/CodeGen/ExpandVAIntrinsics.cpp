@@ -10,17 +10,19 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/IR/IRBuilder.h"
-
-#include "AMDGPU.h" // wherever initializeExpandVAIntrinsicsPass is
+#include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/ExpandVAIntrinsics.h"
 
 #include <cstdio>
 
 #define DEBUG_TYPE "expand-va-intrinsics"
 
 using namespace llvm;
+
 
 namespace {
 
@@ -212,9 +214,10 @@ public:
   }
 };
 } // namespace
+
 char ExpandVAIntrinsics::ID = 0;
 
-char &llvm::ExpandVAIntrinsicsID = ExpandVAIntrinsics::ID;
+// char &llvm::ExpandVAIntrinsicsID = ExpandVAIntrinsics::ID;
 
 INITIALIZE_PASS(ExpandVAIntrinsics, DEBUG_TYPE, "Expand VA intrinsics", false,
                 false)
