@@ -119,7 +119,7 @@ public:
 
       for (size_t i = 0; i < Varargs.size(); i++) {
         auto r = Builder.CreateStructGEP(LDSTy, alloced, i);
-        auto st = Builder.CreateStore(Varargs[i], r);
+        Builder.CreateStore(Varargs[i], r); // alignment info could be better
       }
 
       auto asvoid = Builder.CreatePointerBitCastOrAddrSpaceCast(
@@ -186,7 +186,7 @@ public:
         for (Instruction &I : llvm::make_early_inc_range(BB)) {
           if (VAStartInst *II = dyn_cast<VAStartInst>(&I)) {
             Builder.SetInsertPoint(II);
-            Builder.CreateStore(II->getArgList(), StructPtr);
+            Builder.CreateStore(StructPtr, II->getArgList());
             II->eraseFromParent();
             continue;
           }
@@ -201,7 +201,7 @@ public:
             Value *src = II->getSrc();
             Builder.SetInsertPoint(II);
             Value *ld = Builder.CreateLoad(src->getType(), src);
-            Builder.CreateStore(dst, ld);
+            Builder.CreateStore(ld, dst);
             II->eraseFromParent();
             continue;
           }
