@@ -30,6 +30,7 @@ public:
   static char ID;
 
   ExpandVAIntrinsics() : ModulePass(ID) {
+    fprintf(stderr, "// ExpandVAIntrinsic constructed\n");
     initializeExpandVAIntrinsicsPass(*PassRegistry::getPassRegistry());
   }
 

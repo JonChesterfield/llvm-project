@@ -38,6 +38,7 @@
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
 #include "llvm/Transforms/Utils/Debugify.h"
+#include "llvm/CodeGen/ExpandVAIntrinsics.h"
 
 using namespace llvm;
 using namespace opt_tool;

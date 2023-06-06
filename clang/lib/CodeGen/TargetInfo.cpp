@@ -304,7 +304,7 @@ static llvm::Value *emitRoundPointerUpToAlignment(CodeGenFunction &CGF,
       CGF.Builder.getInt8Ty(), Ptr, Align.getQuantity() - 1);
 
   // TODO: It really should be possible to get the right addrspace annotation on the gep directly
-  RoundUp = CGF.Builder.CreatePointerBitCastOrAddrSpaceCast(RoundUp, CGF.AllocaInt8PtrTy);
+  RoundUp = CGF.Builder.CreatePointerBitCastOrAddrSpaceCast(RoundUp, CGF.AllocaInt8PtrTy, Ptr->getName() + ".cast");
   
   return CGF.Builder.CreateIntrinsic(
       llvm::Intrinsic::ptrmask, {CGF.AllocaInt8PtrTy, CGF.IntPtrTy},
@@ -4064,6 +4064,16 @@ static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
 
 Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
+
+  // hacky hack
+  fprintf(stderr, "// x64 override\n");
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, false,
+                          getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(4),
+                          /*AllowHigherAlign=*/true);
+
+
+  
   // Assume that va_list type is correct; should be pointer to LLVM type:
   // struct {
   //   i32 gp_offset;

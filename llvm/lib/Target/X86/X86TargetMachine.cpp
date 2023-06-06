@@ -564,7 +564,6 @@ void X86PassConfig::addPreEmitPass() {
     addPass(new X86ExecutionDomainFix());
     addPass(createBreakFalseDeps());
   }
-
   addPass(createX86IndirectBranchTrackingPass());
 
   addPass(createX86IssueVZeroUpperPass());
