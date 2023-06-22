@@ -74,7 +74,7 @@ constexpr uint64_t DEFAULT_PORT_COUNT = 64;
 ///   - The client will always start with a 'send' operation.
 ///   - The server will always start with a 'recv' operation.
 ///   - Every 'send' or 'recv' call is mirrored by the other process.
-template <bool Invert, uint32_t lane_size> struct Process {
+template <bool Invert, typename PacketType> struct Process {
   LIBC_INLINE Process() = default;
   LIBC_INLINE Process(const Process &) = delete;
   LIBC_INLINE Process &operator=(const Process &) = delete;
@@ -88,7 +88,7 @@ protected:
   uint64_t port_count;
   cpp::Atomic<uint32_t> *inbox;
   cpp::Atomic<uint32_t> *outbox;
-  Packet<lane_size> *packet;
+  PacketType *packet;
 
   cpp::Atomic<uint32_t> lock[DEFAULT_PORT_COUNT] = {0};
 
@@ -100,7 +100,7 @@ public:
         advance(buffer, inbox_offset(port_count)));
     this->outbox = reinterpret_cast<cpp::Atomic<uint32_t> *>(
         advance(buffer, outbox_offset(port_count)));
-    this->packet = reinterpret_cast<Packet<lane_size> *>(
+    this->packet = reinterpret_cast<PacketType *>(
         advance(buffer, buffer_offset(port_count)));
   }
 
@@ -226,30 +226,6 @@ protected:
     gpu::sync_lane(lane_mask);
   }
 
-  /// Invokes a function accross every active buffer across the total lane size.
-  LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *)> fn,
-                              Packet<lane_size> &packet) {
-    if constexpr (is_process_gpu()) {
-      fn(&packet.payload.slot[gpu::get_lane_id()]);
-    } else {
-      for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
-        if (packet.header.mask & 1ul << i)
-          fn(&packet.payload.slot[i]);
-    }
-  }
-
-  /// Alternate version that also provides the index of the current lane.
-  LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
-                              Packet<lane_size> &packet) {
-    if constexpr (is_process_gpu()) {
-      fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
-    } else {
-      for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
-        if (packet.header.mask & 1ul << i)
-          fn(&packet.payload.slot[i], i);
-    }
-  }
-
   /// Number of bytes to allocate for an inbox or outbox.
   LIBC_INLINE static uint64_t mailbox_bytes(uint64_t port_count) {
     return port_count * sizeof(cpp::Atomic<uint32_t>);
@@ -257,7 +233,7 @@ protected:
 
   /// Number of bytes to allocate for the buffer containing the packets.
   LIBC_INLINE static uint64_t buffer_bytes(uint64_t port_count) {
-    return port_count * sizeof(Packet<lane_size>);
+    return port_count * sizeof(PacketType);
   }
 
   /// Offset of the inbox in memory. This is the same as the outbox if inverted.
@@ -272,15 +248,43 @@ protected:
 
   /// Offset of the buffer containing the packets after the inbox and outbox.
   LIBC_INLINE static uint64_t buffer_offset(uint64_t port_count) {
-    return align_up(2 * mailbox_bytes(port_count), alignof(Packet<lane_size>));
+    return align_up(2 * mailbox_bytes(port_count), alignof(PacketType));
   }
 };
 
+namespace {
+  /// Invokes a function accross every active buffer across the total lane size.
+    template <uint32_t lane_size>    
+  LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *)> fn,
+                              Packet<lane_size> &packet) {
+    if constexpr (is_process_gpu()) {
+      fn(&packet.payload.slot[gpu::get_lane_id()]);
+    } else {
+      for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
+        if (packet.header.mask & 1ul << i)
+          fn(&packet.payload.slot[i]);
+    }
+  }
+
+  /// Alternate version that also provides the index of the current lane.
+  template <uint32_t lane_size>    
+  LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
+                              Packet<lane_size> &packet) {
+    if constexpr (is_process_gpu()) {
+      fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
+    } else {
+      for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
+        if (packet.header.mask & 1ul << i)
+          fn(&packet.payload.slot[i], i);
+    }
+  }
+  }
+  
 /// The port provides the interface to communicate between the multiple
 /// processes. A port is conceptually an index into the memory provided by the
 /// underlying process that is guarded by a lock bit.
 template <bool T, uint32_t S> struct Port {
-  LIBC_INLINE Port(Process<T, S> &process, uint64_t lane_mask, uint64_t index,
+  LIBC_INLINE Port(Process<T, Packet<S>> &process, uint64_t lane_mask, uint64_t index,
                    uint32_t out)
       : process(process), lane_mask(lane_mask), index(index), out(out),
         receive(false), owns_buffer(true) {}
@@ -320,7 +324,7 @@ public:
   }
 
 private:
-  Process<T, S> &process;
+  Process<T, Packet<S>> &process;
   uint64_t lane_mask;
   uint64_t index;
   uint32_t out;
@@ -329,7 +333,7 @@ private:
 };
 
 /// The RPC client used to make requests to the server.
-struct Client : public Process<false, gpu::LANE_SIZE> {
+struct Client : public Process<false, Packet<gpu::LANE_SIZE>> {
   LIBC_INLINE Client() = default;
   LIBC_INLINE Client(const Client &) = delete;
   LIBC_INLINE Client &operator=(const Client &) = delete;
@@ -341,7 +345,7 @@ struct Client : public Process<false, gpu::LANE_SIZE> {
 };
 
 /// The RPC server used to respond to the client.
-template <uint32_t lane_size> struct Server : public Process<true, lane_size> {
+template <uint32_t lane_size> struct Server : public Process<true, Packet<lane_size>> {
   LIBC_INLINE Server() = default;
   LIBC_INLINE Server(const Server &) = delete;
   LIBC_INLINE Server &operator=(const Server &) = delete;
@@ -362,7 +366,7 @@ LIBC_INLINE void Port<T, S>::send(F fill) {
   process.wait_for_ownership(index, out, in);
 
   // Apply the \p fill function to initialize the buffer and release the memory.
-  process.invoke_rpc(fill, process.packet[index]);
+  invoke_rpc(fill, process.packet[index]);
   out = process.invert_outbox(index, out);
   owns_buffer = false;
   receive = false;
@@ -385,7 +389,7 @@ LIBC_INLINE void Port<T, S>::recv(U use) {
   process.wait_for_ownership(index, out, in);
 
   // Apply the \p use function to read the memory out of the buffer.
-  process.invoke_rpc(use, process.packet[index]);
+  invoke_rpc(use, process.packet[index]);
   receive = true;
   owns_buffer = true;
 }
