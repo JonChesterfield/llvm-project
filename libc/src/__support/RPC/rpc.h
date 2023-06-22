@@ -148,7 +148,7 @@ protected:
                                       uint32_t in) {
     while (buffer_unavailable(in, outbox)) {
       sleep_briefly();
-      in = process.load_inbox(index);
+      in = load_inbox(index);
     }
     atomic_thread_fence(cpp::MemoryOrder::ACQUIRE);
   }
@@ -359,7 +359,7 @@ LIBC_INLINE void Port<T, S>::send(F fill) {
   uint32_t in = owns_buffer ? out ^ T : process.load_inbox(index);
 
   // We need to wait until we own the buffer before sending.
-  Process<T, S>::wait_for_ownership(index, in, out);
+  process.wait_for_ownership(index, in, out);
 
   // Apply the \p fill function to initialize the buffer and release the memory.
   process.invoke_rpc(fill, process.packet[index]);
@@ -382,7 +382,7 @@ LIBC_INLINE void Port<T, S>::recv(U use) {
   uint32_t in = owns_buffer ? out ^ T : process.load_inbox(index);
 
   // We need to wait until we own the buffer before receiving.
-  Process<T, S>::wait_for_ownership(index, in, out);
+  process.wait_for_ownership(index, in, out);
 
   // Apply the \p use function to read the memory out of the buffer.
   process.invoke_rpc(use, process.packet[index]);
