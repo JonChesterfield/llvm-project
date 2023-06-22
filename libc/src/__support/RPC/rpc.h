@@ -142,10 +142,10 @@ protected:
     return inverted_outbox;
   }
 
-  // Given current outbox and inbox values, wait until the inbox changes
+  // Given the current outbox and inbox values, wait until the inbox changes
   // to indicate that this thread owns the buffer element.
-  LIBC_INLINE uint32_t wait_for_ownership(uint64_t index, uint32_t outbox,
-                                          uint32_t in) {
+  LIBC_INLINE void wait_for_ownership(uint64_t index, uint32_t outbox,
+                                      uint32_t in) {
     while (buffer_unavailable(in, outbox)) {
       sleep_briefly();
       in = process.load_inbox(index);
@@ -358,7 +358,7 @@ template <typename F>
 LIBC_INLINE void Port<T, S>::send(F fill) {
   uint32_t in = owns_buffer ? out ^ T : process.load_inbox(index);
 
-  // We need to wait until we own the buffer before receiving.
+  // We need to wait until we own the buffer before sending.
   Process<T, S>::wait_for_ownership(index, in, out);
 
   // Apply the \p fill function to initialize the buffer and release the memory.
