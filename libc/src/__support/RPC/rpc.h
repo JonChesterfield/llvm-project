@@ -184,13 +184,25 @@ protected:
     //
     // mask != packed implies at least one of the threads got the lock
     // atomic semantics of fetch_or mean at most one of the threads for the lock
-    return lane_mask != packed;
+    bool holding_lock = lane_mask != packed;
+    if (holding_lock) {
+      // Then the caller can load values knowing said loads won't move past
+      // the lock. No such guarantee is needed if the lock acquire failed.
+      // This conditional branch is expected to fold in the caller after
+      // inlining the current function.
+      atomic_thread_fence(cpp::MemoryOrder::ACQUIRE);
+    }
+
+    return holding_lock;
   }
 
   /// Unlock the lock at index. We need a lane sync to keep this function
   /// convergent, otherwise the compiler will sink the store and deadlock.
   [[clang::convergent]] LIBC_INLINE void unlock(uint64_t lane_mask,
                                                 uint64_t index) {
+    // Do not move any writes past the unlock
+    atomic_thread_fence(cpp::MemoryOrder::RELEASE);
+
     // Wait for other threads in the warp to finish using the lock
     gpu::sync_lane(lane_mask);
 
@@ -219,7 +231,8 @@ protected:
   LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
                               Packet<lane_size> &packet) {
     if constexpr (is_process_gpu()) {
-      fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
+
+        fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
     } else {
       for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
         if (packet.header.mask & 1ul << i)
@@ -269,6 +282,7 @@ private:
   LIBC_INLINE Port(Port &&) = default;
   LIBC_INLINE Port &operator=(Port &&) = default;
 
+  
   friend struct Client;
   template <uint32_t U> friend struct Server;
   friend class cpp::optional<Port<T, S>>;
@@ -479,9 +493,6 @@ Client::try_open() {
     if (!this->try_lock(lane_mask, index))
       continue;
 
-    // The mailbox state must be read with the lock held.
-    atomic_thread_fence(cpp::MemoryOrder::ACQUIRE);
-
     uint32_t in = this->load_inbox(index);
     uint32_t out = this->load_outbox(index);
 
@@ -528,12 +539,8 @@ template <uint32_t lane_size>
 
     // Attempt to acquire the lock on this index.
     uint64_t lane_mask = gpu::get_lane_mask();
-    // Attempt to acquire the lock on this index.
     if (!this->try_lock(lane_mask, index))
       continue;
-
-    // The mailbox state must be read with the lock held.
-    atomic_thread_fence(cpp::MemoryOrder::ACQUIRE);
 
     in = this->load_inbox(index);
     out = this->load_outbox(index);
