@@ -184,15 +184,14 @@ protected:
     //
     // mask != packed implies at least one of the threads got the lock
     // atomic semantics of fetch_or mean at most one of the threads for the lock
-    bool holding_lock = lane_mask != packed;
-    if (holding_lock) {
-      // Then the caller can load values knowing said loads won't move past
-      // the lock. No such guarantee is needed if the lock acquire failed.
-      // This conditional branch is expected to fold in the caller after
-      // inlining the current function.
-      atomic_thread_fence(cpp::MemoryOrder::ACQUIRE);
-    }
 
+    // If holding the lock then the caller can load values knowing said loads
+    // won't move past the lock. No such guarantee is needed if the lock acquire
+    // failed. This conditional branch is expected to fold in the caller after
+    // inlining the current function.
+    bool holding_lock = lane_mask != packed;
+    if (holding_lock)
+      atomic_thread_fence(cpp::MemoryOrder::ACQUIRE);
     return holding_lock;
   }
 
