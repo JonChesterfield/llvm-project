@@ -231,7 +231,7 @@ protected:
   LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
                               Packet<lane_size> &packet) {
     if constexpr (is_process_gpu()) {
-        fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
+      fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
     } else {
       for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
         if (packet.header.mask & 1ul << i)
