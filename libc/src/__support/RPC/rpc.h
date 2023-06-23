@@ -74,7 +74,7 @@ constexpr uint64_t DEFAULT_PORT_COUNT = 64;
 ///   - The client will always start with a 'send' operation.
 ///   - The server will always start with a 'recv' operation.
 ///   - Every 'send' or 'recv' call is mirrored by the other process.
-template <bool Invert, uint32_t lane_size> struct Process {
+template <bool Invert, typename Packet> struct Process {
   LIBC_INLINE Process() = default;
   LIBC_INLINE Process(const Process &) = delete;
   LIBC_INLINE Process &operator=(const Process &) = delete;
@@ -85,7 +85,7 @@ template <bool Invert, uint32_t lane_size> struct Process {
   uint64_t port_count;
   cpp::Atomic<uint32_t> *inbox;
   cpp::Atomic<uint32_t> *outbox;
-  Packet<lane_size> *packet;
+  Packet *packet;
 
   cpp::Atomic<uint32_t> lock[DEFAULT_PORT_COUNT] = {0};
 
@@ -96,8 +96,8 @@ template <bool Invert, uint32_t lane_size> struct Process {
         advance(buffer, inbox_offset(port_count)));
     this->outbox = reinterpret_cast<cpp::Atomic<uint32_t> *>(
         advance(buffer, outbox_offset(port_count)));
-    this->packet = reinterpret_cast<Packet<lane_size> *>(
-        advance(buffer, buffer_offset(port_count)));
+    this->packet =
+        reinterpret_cast<Packet *>(advance(buffer, buffer_offset(port_count)));
   }
 
   /// Returns the beginning of the unified buffer. Intended for initializing the
@@ -222,8 +222,9 @@ template <bool Invert, uint32_t lane_size> struct Process {
   }
 
   /// Invokes a function accross every active buffer across the total lane size.
-  LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *)> fn,
-                              Packet<lane_size> &packet) {
+  template <uint32_t lane_size, template P>
+  LIBC_INLINE static void invoke_rpc(cpp::function<void(Buffer *)> fn,
+                                     P<lane_size> &packet) {
     if constexpr (is_process_gpu()) {
       fn(&packet.payload.slot[gpu::get_lane_id()]);
     } else {
@@ -234,8 +235,9 @@ template <bool Invert, uint32_t lane_size> struct Process {
   }
 
   /// Alternate version that also provides the index of the current lane.
-  LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
-                              Packet<lane_size> &packet) {
+  template <uint32_t lane_size, template P>
+  LIBC_INLINE static void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
+                                     P<lane_size> &packet) {
     if constexpr (is_process_gpu()) {
       fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
     } else {
@@ -252,7 +254,7 @@ template <bool Invert, uint32_t lane_size> struct Process {
 
   /// Number of bytes to allocate for the buffer containing the packets.
   LIBC_INLINE static constexpr uint64_t buffer_bytes(uint64_t port_count) {
-    return port_count * sizeof(Packet<lane_size>);
+    return port_count * sizeof(Packet);
   }
 
   /// Offset of the inbox in memory. This is the same as the outbox if inverted.
@@ -267,7 +269,7 @@ template <bool Invert, uint32_t lane_size> struct Process {
 
   /// Offset of the buffer containing the packets after the inbox and outbox.
   LIBC_INLINE static constexpr uint64_t buffer_offset(uint64_t port_count) {
-    return align_up(2 * mailbox_bytes(port_count), alignof(Packet<lane_size>));
+    return align_up(2 * mailbox_bytes(port_count), alignof(Packet));
   }
 };
 
@@ -339,7 +341,7 @@ struct Client {
   }
 
 private:
-  Process<false, gpu::LANE_SIZE> process;
+  Process<false, Packet<gpu::LANE_SIZE>> process;
 };
 
 /// The RPC server used to respond to the client.
@@ -362,11 +364,11 @@ template <uint32_t lane_size> struct Server {
   }
 
   LIBC_INLINE static uint64_t allocation_size(uint64_t port_count) {
-    return Process<true, lane_size>::allocation_size(port_count);
+    return Process<true, Packet<lane_size>>::allocation_size(port_count);
   }
 
 private:
-  Process<true, lane_size> process;
+  Process<true, Packet<lane_size>> process;
 };
 
 /// Applies \p fill to the shared buffer and initiates a send operation.
