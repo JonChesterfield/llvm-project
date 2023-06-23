@@ -221,32 +221,6 @@ template <bool Invert, typename Packet> struct Process {
     gpu::sync_lane(lane_mask);
   }
 
-  /// Invokes a function accross every active buffer across the total lane size.
-  template <uint32_t lane_size, template P>
-  LIBC_INLINE static void invoke_rpc(cpp::function<void(Buffer *)> fn,
-                                     P<lane_size> &packet) {
-    if constexpr (is_process_gpu()) {
-      fn(&packet.payload.slot[gpu::get_lane_id()]);
-    } else {
-      for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
-        if (packet.header.mask & 1ul << i)
-          fn(&packet.payload.slot[i]);
-    }
-  }
-
-  /// Alternate version that also provides the index of the current lane.
-  template <uint32_t lane_size, template P>
-  LIBC_INLINE static void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
-                                     P<lane_size> &packet) {
-    if constexpr (is_process_gpu()) {
-      fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
-    } else {
-      for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
-        if (packet.header.mask & 1ul << i)
-          fn(&packet.payload.slot[i], i);
-    }
-  }
-
   /// Number of bytes to allocate for an inbox or outbox.
   LIBC_INLINE static constexpr uint64_t mailbox_bytes(uint64_t port_count) {
     return port_count * sizeof(cpp::Atomic<uint32_t>);
@@ -273,10 +247,38 @@ template <bool Invert, typename Packet> struct Process {
   }
 };
 
+namespace {
+/// Invokes a function accross every active buffer across the total lane size.
+template <uint32_t lane_size>
+LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *)> fn,
+                            Packet<lane_size> &packet) {
+  if constexpr (is_process_gpu()) {
+    fn(&packet.payload.slot[gpu::get_lane_id()]);
+  } else {
+    for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
+      if (packet.header.mask & 1ul << i)
+        fn(&packet.payload.slot[i]);
+  }
+}
+
+/// Alternate version that also provides the index of the current lane.
+template <uint32_t lane_size>
+LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
+                            Packet<lane_size> &packet) {
+  if constexpr (is_process_gpu()) {
+    fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
+  } else {
+    for (uint32_t i = 0; i < lane_size; i += gpu::get_lane_size())
+      if (packet.header.mask & 1ul << i)
+        fn(&packet.payload.slot[i], i);
+  }
+}
+} // namespace
+
 /// The port provides the interface to communicate between the multiple
 /// processes. A port is conceptually an index into the memory provided by the
 /// underlying process that is guarded by a lock bit.
-template <bool T, uint32_t S> struct Port {
+template <bool T, typename S> struct Port {
   LIBC_INLINE Port(Process<T, S> &process, uint64_t lane_mask, uint64_t index,
                    uint32_t out)
       : process(process), lane_mask(lane_mask), index(index), out(out),
@@ -332,7 +334,7 @@ struct Client {
   LIBC_INLINE Client &operator=(const Client &) = delete;
   LIBC_INLINE ~Client() = default;
 
-  using Port = rpc::Port<false, gpu::LANE_SIZE>;
+  using Port = rpc::Port<false, Packet<gpu::LANE_SIZE>>;
   template <uint16_t opcode> LIBC_INLINE cpp::optional<Port> try_open();
   template <uint16_t opcode> LIBC_INLINE Port open();
 
@@ -351,7 +353,7 @@ template <uint32_t lane_size> struct Server {
   LIBC_INLINE Server &operator=(const Server &) = delete;
   LIBC_INLINE ~Server() = default;
 
-  using Port = rpc::Port<true, lane_size>;
+  using Port = rpc::Port<true, Packet<lane_size>>;
   LIBC_INLINE cpp::optional<Port> try_open();
   LIBC_INLINE Port open();
 
@@ -372,7 +374,7 @@ private:
 };
 
 /// Applies \p fill to the shared buffer and initiates a send operation.
-template <bool T, uint32_t S>
+template <bool T, typename S>
 template <typename F>
 LIBC_INLINE void Port<T, S>::send(F fill) {
   uint32_t in = owns_buffer ? out ^ T : process.load_inbox(index);
@@ -381,14 +383,14 @@ LIBC_INLINE void Port<T, S>::send(F fill) {
   process.wait_for_ownership(index, out, in);
 
   // Apply the \p fill function to initialize the buffer and release the memory.
-  process.invoke_rpc(fill, process.packet[index]);
+  invoke_rpc(fill, process.packet[index]);
   out = process.invert_outbox(index, out);
   owns_buffer = false;
   receive = false;
 }
 
 /// Applies \p use to the shared buffer and acknowledges the send.
-template <bool T, uint32_t S>
+template <bool T, typename S>
 template <typename U>
 LIBC_INLINE void Port<T, S>::recv(U use) {
   // We only exchange ownership of the buffer during a receive if we are waiting
@@ -404,13 +406,13 @@ LIBC_INLINE void Port<T, S>::recv(U use) {
   process.wait_for_ownership(index, out, in);
 
   // Apply the \p use function to read the memory out of the buffer.
-  process.invoke_rpc(use, process.packet[index]);
+  invoke_rpc(use, process.packet[index]);
   receive = true;
   owns_buffer = true;
 }
 
 /// Combines a send and receive into a single function.
-template <bool T, uint32_t S>
+template <bool T, typename S>
 template <typename F, typename U>
 LIBC_INLINE void Port<T, S>::send_and_recv(F fill, U use) {
   send(fill);
@@ -420,7 +422,7 @@ LIBC_INLINE void Port<T, S>::send_and_recv(F fill, U use) {
 /// Combines a receive and send operation into a single function. The \p work
 /// function modifies the buffer in-place and the send is only used to initiate
 /// the copy back.
-template <bool T, uint32_t S>
+template <bool T, typename S>
 template <typename W>
 LIBC_INLINE void Port<T, S>::recv_and_send(W work) {
   recv(work);
@@ -429,7 +431,7 @@ LIBC_INLINE void Port<T, S>::recv_and_send(W work) {
 
 /// Helper routine to simplify the interface when sending from the GPU using
 /// thread private pointers to the underlying value.
-template <bool T, uint32_t S>
+template <bool T, typename S>
 LIBC_INLINE void Port<T, S>::send_n(const void *src, uint64_t size) {
   static_assert(is_process_gpu(), "Only valid when running on the GPU");
   const void **src_ptr = &src;
@@ -439,7 +441,7 @@ LIBC_INLINE void Port<T, S>::send_n(const void *src, uint64_t size) {
 
 /// Sends an arbitrarily sized data buffer \p src across the shared channel in
 /// multiples of the packet length.
-template <bool T, uint32_t S>
+template <bool T, typename S>
 LIBC_INLINE void Port<T, S>::send_n(const void *const *src, uint64_t *size) {
   uint64_t num_sends = 0;
   send([&](Buffer *buffer, uint32_t id) {
@@ -469,7 +471,7 @@ LIBC_INLINE void Port<T, S>::send_n(const void *const *src, uint64_t *size) {
 /// Receives an arbitrarily sized data buffer across the shared channel in
 /// multiples of the packet length. The \p alloc function is called with the
 /// size of the data so that we can initialize the size of the \p dst buffer.
-template <bool T, uint32_t S>
+template <bool T, typename S>
 template <typename A>
 LIBC_INLINE void Port<T, S>::recv_n(void **dst, uint64_t *size, A &&alloc) {
   uint64_t num_recvs = 0;
