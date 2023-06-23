@@ -7,5 +7,4 @@ add_libc_test(
   SRCS
     rpc_smoke_test.cpp
   DEPENDS
-   libc.src.__support.RPC.rpc
 )
