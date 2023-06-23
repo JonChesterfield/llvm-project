@@ -247,11 +247,10 @@ template <bool Invert, typename Packet> struct Process {
   }
 };
 
-namespace {
 /// Invokes a function accross every active buffer across the total lane size.
 template <uint32_t lane_size>
-LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *)> fn,
-                            Packet<lane_size> &packet) {
+static LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *)> fn,
+                                   Packet<lane_size> &packet) {
   if constexpr (is_process_gpu()) {
     fn(&packet.payload.slot[gpu::get_lane_id()]);
   } else {
@@ -263,8 +262,8 @@ LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *)> fn,
 
 /// Alternate version that also provides the index of the current lane.
 template <uint32_t lane_size>
-LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
-                            Packet<lane_size> &packet) {
+static LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
+                                   Packet<lane_size> &packet) {
   if constexpr (is_process_gpu()) {
     fn(&packet.payload.slot[gpu::get_lane_id()], gpu::get_lane_id());
   } else {
@@ -273,7 +272,6 @@ LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
         fn(&packet.payload.slot[i], i);
   }
 }
-} // namespace
 
 /// The port provides the interface to communicate between the multiple
 /// processes. A port is conceptually an index into the memory provided by the
