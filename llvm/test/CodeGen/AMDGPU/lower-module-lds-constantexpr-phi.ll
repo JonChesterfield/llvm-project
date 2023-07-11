@@ -8,6 +8,7 @@
 define amdgpu_kernel void @func(i32 %c) {
 ; CHECK-LABEL: @func(
 ; CHECK-NEXT:  entry:
+; CHECK-NEXT:    call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.kernel.func.lds) ]
 ; CHECK-NEXT:    switch i32 [[C:%.*]], label [[RETURN:%.*]] [
 ; CHECK-NEXT:    i32 0, label [[BB0:%.*]]
 ; CHECK-NEXT:    i32 1, label [[BB1:%.*]]
