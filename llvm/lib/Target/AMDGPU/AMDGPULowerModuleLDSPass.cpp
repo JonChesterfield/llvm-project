@@ -1234,22 +1234,26 @@ public:
         }
 
         if (AllocateKernelScopeStruct) {
-          GlobalVariable *KernelStruct = KernelToReplacement[&Func].SGV;
+          if (KernelToReplacement.count(&Func) != 0) {
+            GlobalVariable *KernelStruct = KernelToReplacement[&Func].SGV;
 
-          Offset = alignTo(Offset, AMDGPU::getAlign(DL, KernelStruct));
+            Offset = alignTo(Offset, AMDGPU::getAlign(DL, KernelStruct));
 
-          recordLDSAbsoluteAddress(&M, KernelStruct, Offset);
+            recordLDSAbsoluteAddress(&M, KernelStruct, Offset);
 
-          Offset += DL.getTypeAllocSize(KernelStruct->getValueType());
-
+            Offset += DL.getTypeAllocSize(KernelStruct->getValueType());
+          }
         }
 
         if (AllocateDynamicVariable) {
-          GlobalVariable *DynamicVariable = KernelToCreatedDynamicLDS[&Func];
 
-          Offset = alignTo(Offset, AMDGPU::getAlign(DL, DynamicVariable));
+          if (KernelToCreatedDynamicLDS.count(&Func) != 0) {
+            GlobalVariable *DynamicVariable = KernelToCreatedDynamicLDS[&Func];
 
-          recordLDSAbsoluteAddress(&M, DynamicVariable, Offset);
+            Offset = alignTo(Offset, AMDGPU::getAlign(DL, DynamicVariable));
+
+            recordLDSAbsoluteAddress(&M, DynamicVariable, Offset);
+          }
         }
       }
     }
