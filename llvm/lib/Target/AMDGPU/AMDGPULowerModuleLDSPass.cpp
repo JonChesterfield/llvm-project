@@ -514,6 +514,7 @@ public:
 
     std::vector<Constant *> overallConstantExprElts(NumberKernels);
     for (size_t i = 0; i < NumberKernels; i++) {
+      assert(KernelToReplacement.count(kernels[i]) != 0);
       LDSVariableReplacement Replacement = KernelToReplacement[kernels[i]];
       overallConstantExprElts[i] = getAddressesOfVariablesInKernel(
           Ctx, Variables, Replacement.LDSVarsToConstantGEP);
