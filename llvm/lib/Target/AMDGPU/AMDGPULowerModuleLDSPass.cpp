@@ -611,7 +611,7 @@ public:
 
   static GlobalVariable *
   chooseBestVariableForModuleStrategy(const DataLayout &DL,
-                                      VariableFunctionMap &LDSVars) {
+                                      const VariableFunctionMap &LDSVars) {
     // Find the global variable with the most indirect uses from kernels
 
     struct CandidateTy {
@@ -755,7 +755,7 @@ public:
 
   static void partitionVariablesIntoIndirectStrategies(
       Module &M, LDSUsesInfoTy const &LDSUsesInfo,
-      VariableFunctionMap &LDSToKernelsThatNeedToAccessItIndirectly,
+      const VariableFunctionMap &LDSToKernelsThatNeedToAccessItIndirectly,
       DenseSet<GlobalVariable *> &ModuleScopeVariables,
       DenseSet<GlobalVariable *> &TableLookupVariables,
       DenseSet<GlobalVariable *> &KernelAccessVariables,
@@ -770,7 +770,7 @@ public:
     DenseSet<Function *> const EmptySet;
     DenseSet<Function *> const &HybridModuleRootKernels =
         HybridModuleRoot
-            ? LDSToKernelsThatNeedToAccessItIndirectly[HybridModuleRoot]
+            ? LDSToKernelsThatNeedToAccessItIndirectly.at(HybridModuleRoot)
             : EmptySet;
 
     for (auto &K : LDSToKernelsThatNeedToAccessItIndirectly) {
@@ -910,6 +910,8 @@ public:
 
     // Create a struct for each kernel for the non-module-scope variables.
 
+    IRBuilder<> Builder(M.getContext());
+
     DenseMap<Function *, LDSVariableReplacement> KernelToReplacement;
     for (Function &Func : M.functions()) {
       if (Func.isDeclaration() || !isKernelLDS(&Func))
@@ -961,6 +963,9 @@ public:
 
       auto Replacement =
           createLDSVariableReplacement(M, VarName, KernelUsedVariables);
+
+      // In case all uses are from called functions
+      markUsedByKernel(Builder, &Func, Replacement.SGV);
 
       // remove preserves existing codegen
       removeLocalVarsFromUsedLists(M, KernelUsedVariables);
@@ -1155,8 +1160,6 @@ public:
       DenseSet<GlobalVariable *> Vec;
       Vec.insert(GV);
 
-      // TODO: Looks like a latent bug, Replacement may not be marked
-      // UsedByKernel here
       replaceLDSVariablesWithStruct(M, Vec, Replacement, [](Use &U) {
         return isa<Instruction>(U.getUser());
       });
@@ -1170,11 +1173,6 @@ public:
     if (!KernelsThatAllocateTableLDS.empty()) {
       LLVMContext &Ctx = M.getContext();
       IRBuilder<> Builder(Ctx);
-
-      for (size_t i = 0; i < OrderedKernels.size(); i++) {
-        markUsedByKernel(Builder, OrderedKernels[i],
-                         KernelToReplacement[OrderedKernels[i]].SGV);
-      }
 
       // The order must be consistent between lookup table and accesses to
       // lookup table
