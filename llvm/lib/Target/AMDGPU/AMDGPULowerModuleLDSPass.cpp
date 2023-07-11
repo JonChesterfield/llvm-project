@@ -513,11 +513,15 @@ public:
     ArrayType *AllKernelsOffsetsType =
         ArrayType::get(KernelOffsetsType, NumberKernels);
 
+    Constant *Missing = PoisonValue::get(KernelOffsetsType);
     std::vector<Constant *> overallConstantExprElts(NumberKernels);
     for (size_t i = 0; i < NumberKernels; i++) {
-      LDSVariableReplacement Replacement = KernelToReplacement[kernels[i]];
-      overallConstantExprElts[i] = getAddressesOfVariablesInKernel(
-          Ctx, Variables, Replacement.LDSVarsToConstantGEP);
+      auto Replacement = KernelToReplacement.find(kernels[i]);
+      overallConstantExprElts[i] =
+          (Replacement == KernelToReplacement.end())
+              ? Missing
+              : getAddressesOfVariablesInKernel(
+                    Ctx, Variables, Replacement->second.LDSVarsToConstantGEP);
     }
 
     Constant *init =
