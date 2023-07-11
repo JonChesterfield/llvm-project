@@ -782,22 +782,28 @@ public:
       assert(AMDGPU::isLDSVariableToLower(*GV));
       assert(K.second.size() != 0);
 
+      fprintf(stderr, "Variable: %s\n",  GV->getName().str().c_str()); 
+      
       if (AMDGPU::isDynamicLDS(*GV)) {
+        fprintf(stderr, "Dynamic: %s\n",  GV->getName().str().c_str()); 
         DynamicVariables.insert(GV);
         continue;
       }
 
       switch (LoweringKindLoc) {
       case LoweringKind::module:
+        fprintf(stderr, "Module: %s\n",  GV->getName().str().c_str()); 
         ModuleScopeVariables.insert(GV);
         break;
 
       case LoweringKind::table:
+        fprintf(stderr, "Table: %s\n",  GV->getName().str().c_str());                 
         TableLookupVariables.insert(GV);
         break;
 
       case LoweringKind::kernel:
         if (K.second.size() == 1) {
+        fprintf(stderr, "Kernel: %s\n",  GV->getName().str().c_str()); 
           KernelAccessVariables.insert(GV);
         } else {
           report_fatal_error(
@@ -964,8 +970,11 @@ public:
       auto Replacement =
           createLDSVariableReplacement(M, VarName, KernelUsedVariables);
 
-      // In case all uses are from called functions
-      markUsedByKernel(Builder, &Func, Replacement.SGV);
+      // If any indirect uses, create a direct use to ensure allocation
+      // TODO: Simpler to unconditionally mark used but that regresses
+      // codegen in noclobber-barrier
+      if (!LDSUsesInfo.indirect_access[&Func].empty())
+        markUsedByKernel(Builder, &Func, Replacement.SGV);
 
       // remove preserves existing codegen
       removeLocalVarsFromUsedLists(M, KernelUsedVariables);
