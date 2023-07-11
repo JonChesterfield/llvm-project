@@ -964,8 +964,11 @@ public:
       auto Replacement =
           createLDSVariableReplacement(M, VarName, KernelUsedVariables);
 
-      // In case all uses are from called functions
-      markUsedByKernel(Builder, &Func, Replacement.SGV);
+      // If any indirect uses, create a direct use to ensure allocation
+      // TODO: Simpler to unconditionally mark used but that regresses
+      // codegen in noclobber-barrier
+      if (!LDSUsesInfo.indirect_access[&Func].empty())
+        markUsedByKernel(Builder, &Func, Replacement.SGV);
 
       // remove preserves existing codegen
       removeLocalVarsFromUsedLists(M, KernelUsedVariables);

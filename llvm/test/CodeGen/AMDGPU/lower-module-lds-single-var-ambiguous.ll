@@ -9,7 +9,6 @@
 @kernel.lds = addrspace(3) global i8 undef
 define amdgpu_kernel void @k0() {
 ; CHECK-LABEL: @k0(
-; CHECK-NEXT:    call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.kernel.k0.lds) ]
 ; CHECK-NEXT:    [[LD:%.*]] = load i8, ptr addrspace(3) @llvm.amdgcn.kernel.k0.lds, align 1
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[LD]], 2
 ; CHECK-NEXT:    store i8 [[MUL]], ptr addrspace(3) @llvm.amdgcn.kernel.k0.lds, align 1
@@ -23,7 +22,6 @@ define amdgpu_kernel void @k0() {
 
 define amdgpu_kernel void @k1() {
 ; CHECK-LABEL: @k1(
-; CHECK-NEXT:    call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.kernel.k1.lds) ]
 ; CHECK-NEXT:    [[LD:%.*]] = load i8, ptr addrspace(3) @llvm.amdgcn.kernel.k1.lds, align 1
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[LD]], 3
 ; CHECK-NEXT:    store i8 [[MUL]], ptr addrspace(3) @llvm.amdgcn.kernel.k1.lds, align 1
