@@ -513,11 +513,15 @@ public:
         ArrayType::get(KernelOffsetsType, NumberKernels);
 
     std::vector<Constant *> overallConstantExprElts(NumberKernels);
+    Constant *Missing = PoisonValue::get(KernelOffsetsType);
     for (size_t i = 0; i < NumberKernels; i++) {
-      assert(KernelToReplacement.count(kernels[i]) != 0);
-      LDSVariableReplacement Replacement = KernelToReplacement[kernels[i]];
-      overallConstantExprElts[i] = getAddressesOfVariablesInKernel(
-          Ctx, Variables, Replacement.LDSVarsToConstantGEP);
+      auto Replacement = KernelToReplacement.find(kernels[i]);
+      if (Replacement != KernelToReplacement.end()) {
+        overallConstantExprElts[i] = getAddressesOfVariablesInKernel(
+            Ctx, Variables, Replacement->second.LDSVarsToConstantGEP);
+      } else {
+        overallConstantExprElts[i] = Missing;
+      }
     }
 
     Constant *init =
@@ -1235,7 +1239,6 @@ public:
         }
 
         if (AllocateKernelScopeStruct) {
-          if (KernelToReplacement.count(&Func) != 0) {
             GlobalVariable *KernelStruct = KernelToReplacement[&Func].SGV;
 
             Offset = alignTo(Offset, AMDGPU::getAlign(DL, KernelStruct));
@@ -1243,18 +1246,14 @@ public:
             recordLDSAbsoluteAddress(&M, KernelStruct, Offset);
 
             Offset += DL.getTypeAllocSize(KernelStruct->getValueType());
-          }
         }
 
         if (AllocateDynamicVariable) {
-
-          if (KernelToCreatedDynamicLDS.count(&Func) != 0) {
             GlobalVariable *DynamicVariable = KernelToCreatedDynamicLDS[&Func];
 
             Offset = alignTo(Offset, AMDGPU::getAlign(DL, DynamicVariable));
 
             recordLDSAbsoluteAddress(&M, DynamicVariable, Offset);
-          }
         }
       }
     }
