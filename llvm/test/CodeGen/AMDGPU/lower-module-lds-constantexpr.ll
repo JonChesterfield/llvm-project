@@ -49,8 +49,7 @@ entry:
 }
 
 ; CHECK-LABEL: @timestwo() #0
-; CHECK-NOT: call void @llvm.donothing()
-
+; CHECK:      call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.kernel.timestwo.lds) ]
 ; CHECK:      %1 = addrspacecast ptr addrspace(3) @llvm.amdgcn.kernel.timestwo.lds to ptr
 ; CHECK:      %2 = ptrtoint ptr %1 to i64
 ; CHECK:      %3 = addrspacecast ptr addrspace(3) getelementptr inbounds (%llvm.amdgcn.kernel.timestwo.lds.t, ptr addrspace(3) @llvm.amdgcn.kernel.timestwo.lds, i32 0, i32 1) to ptr
