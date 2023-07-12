@@ -173,11 +173,7 @@ void AMDGPUMachineFunction::allocateKnownAddressLDSGlobal(const Function &F) {
       }
     }
 
-    uint32_t attrSize = 0;
-    StringRef S = F.getFnAttribute("amdgpu-lds-size").getValueAsString();
-    if (!S.empty())
-      S.consumeInteger(0, attrSize);
-
+    uint32_t attrSize = F.getFnAttributeAsParsedInteger("amdgpu-lds-size", 0);
     if (attrSize != LDSSize) {
       report_fatal_error("Inconsistent size metadata on LDS variable");
     }
