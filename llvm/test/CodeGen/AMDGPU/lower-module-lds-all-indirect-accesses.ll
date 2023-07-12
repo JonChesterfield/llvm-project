@@ -83,5 +83,4 @@ define private ptr @get_B_ptr() {
   ret ptr addrspacecast (ptr addrspace(3) @B to ptr)
 }
 
-
 ; CHECK: attributes #0 = { "amdgpu-lds-size"="64" }
