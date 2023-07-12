@@ -172,6 +172,15 @@ void AMDGPUMachineFunction::allocateKnownAddressLDSGlobal(const Function &F) {
         report_fatal_error("Inconsistent metadata on dynamic LDS variable");
       }
     }
+
+    uint32_t attrSize = 0;
+    StringRef S = F.getFnAttribute("amdgpu-lds-size").getValueAsString();
+    if (!S.empty())
+      S.consumeInteger(0, attrSize);
+
+    if (attrSize != LDSSize) {
+      report_fatal_error("Inconsistent size metadata on LDS variable");
+    }
   }
 }
 

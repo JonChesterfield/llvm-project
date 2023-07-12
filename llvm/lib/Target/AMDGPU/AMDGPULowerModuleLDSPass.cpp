@@ -1266,6 +1266,9 @@ public:
 
           recordLDSAbsoluteAddress(&M, DynamicVariable, Offset);
         }
+
+        if (Offset != 0)
+          Func.addFnAttr("amdgpu-lds-size", std::to_string(Offset));
       }
     }
 
