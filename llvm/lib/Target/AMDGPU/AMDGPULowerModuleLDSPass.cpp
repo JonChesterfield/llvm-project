@@ -1221,7 +1221,8 @@ public:
           continue;
 
         // All three of these are optional. The first variable is allocated at
-        // zero. They are allocated by AMDGPUMachineFunction as one block. Layout:
+        // zero. They are allocated by AMDGPUMachineFunction as one block.
+        // Layout:
         //{
         //  module.lds
         //  alignment padding
@@ -1254,17 +1255,17 @@ public:
           recordLDSAbsoluteAddress(&M, KernelStruct, Offset);
           Offset += DL.getTypeAllocSize(KernelStruct->getValueType());
         }
-        
-        // If there is dynamic allocation, the alignment needed is included in the
-        // static frame size. There may be no reference to the dynamic variable in the
-        // kernel itself, so without including it here, that alignment padding could be
-        // missed.
+
+        // If there is dynamic allocation, the alignment needed is included in
+        // the static frame size. There may be no reference to the dynamic
+        // variable in the kernel itself, so without including it here, that
+        // alignment padding could be missed.
         if (AllocateDynamicVariable) {
           GlobalVariable *DynamicVariable = KernelToCreatedDynamicLDS[&Func];
           Offset = alignTo(Offset, AMDGPU::getAlign(DL, DynamicVariable));
           recordLDSAbsoluteAddress(&M, DynamicVariable, Offset);
         }
-        
+
         if (Offset != 0)
           Func.addFnAttr("amdgpu-lds-size", std::to_string(Offset));
       }
