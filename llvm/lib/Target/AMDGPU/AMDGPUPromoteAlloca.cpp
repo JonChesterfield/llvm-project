@@ -945,22 +945,28 @@ bool AMDGPUPromoteAllocaImpl::hasSufficientLocalMem(const Function &F) {
     AllocatedSizes.emplace_back(AllocSize, Alignment);
   }
 
-  // Sort to try to estimate the worst case alignment padding
-  //
-  // FIXME: We should really do something to fix the addresses to a more optimal
-  // value instead
-  llvm::sort(AllocatedSizes, llvm::less_second());
-
   // Check how much local memory is being used by global objects
   CurrentLocalMemUsage = 0;
 
-  // FIXME: Try to account for padding here. The real padding and address is
-  // currently determined from the inverse order of uses in the function when
-  // legalizing, which could also potentially change. We try to estimate the
-  // worst case here, but we probably should fix the addresses earlier.
-  for (auto Alloc : AllocatedSizes) {
-    CurrentLocalMemUsage = alignTo(CurrentLocalMemUsage, Alloc.second);
-    CurrentLocalMemUsage += Alloc.first;
+  // If the kernel has an amdgpu-lds-size attribute, use that value instead of
+  // estimating.
+  CurrentLocalMemUsage = F.getFnAttributeAsParsedInteger("amdgpu-lds-size", 0);
+
+  if (CurrentLocalMemUsage == 0) {
+    // Sort to try to estimate the worst case alignment padding
+    //
+    // FIXME: We should really do something to fix the addresses to a more optimal
+    // value instead
+    llvm::sort(AllocatedSizes, llvm::less_second());
+
+    // FIXME: Try to account for padding here. The real padding and address is
+    // currently determined from the inverse order of uses in the function when
+    // legalizing, which could also potentially change. We try to estimate the
+    // worst case here, but we probably should fix the addresses earlier.
+    for (auto Alloc : AllocatedSizes) {
+      CurrentLocalMemUsage = alignTo(CurrentLocalMemUsage, Alloc.second);
+      CurrentLocalMemUsage += Alloc.first;
+    }
   }
 
   unsigned MaxOccupancy =

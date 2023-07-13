@@ -904,9 +904,6 @@ public:
               Function *F = I->getFunction();
               return F == &Func;
             });
-
-        markUsedByKernel(Builder, &Func, ModuleScopeReplacement.SGV);
-
       } else {
         markElideModuleLDS(Func);
       }
@@ -976,14 +973,6 @@ public:
 
       auto Replacement =
           createLDSVariableReplacement(M, VarName, KernelUsedVariables);
-
-      // If any indirect uses, create a direct use to ensure allocation
-      // TODO: Simpler to unconditionally mark used but that regresses
-      // codegen in test/CodeGen/AMDGPU/noclobber-barrier.ll
-      auto Accesses = LDSUsesInfo.indirect_access.find(&Func);
-      if ((Accesses != LDSUsesInfo.indirect_access.end()) &&
-          !Accesses->second.empty())
-        markUsedByKernel(Builder, &Func, Replacement.SGV);
 
       // remove preserves existing codegen
       removeLocalVarsFromUsedLists(M, KernelUsedVariables);
@@ -1072,6 +1061,7 @@ public:
 
           KernelToCreatedDynamicLDS[func] = N;
 
+          // Could replace this with a dynamic LDS alignment attribute
           markUsedByKernel(Builder, func, N);
 
           auto emptyCharArray = ArrayType::get(Type::getInt8Ty(Ctx), 0);

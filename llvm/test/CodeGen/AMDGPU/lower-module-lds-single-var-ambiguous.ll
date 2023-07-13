@@ -68,12 +68,10 @@ define void @f0() {
 
 define amdgpu_kernel void @k0_f0() {
 ; M_OR_HY-LABEL: @k0_f0(
-; M_OR_HY-NEXT:    call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.module.lds) ]
 ; M_OR_HY-NEXT:    call void @f0()
 ; M_OR_HY-NEXT:    ret void
 ;
 ; TABLE-LABEL: @k0_f0(
-; TABLE-NEXT:    call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.kernel.k0_f0.lds) ]
 ; TABLE-NEXT:    call void @f0()
 ; TABLE-NEXT:    ret void
 ;
@@ -83,12 +81,10 @@ define amdgpu_kernel void @k0_f0() {
 
 define amdgpu_kernel void @k1_f0() {
 ; M_OR_HY-LABEL: @k1_f0(
-; M_OR_HY-NEXT:    call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.module.lds) ]
 ; M_OR_HY-NEXT:    call void @f0()
 ; M_OR_HY-NEXT:    ret void
 ;
 ; TABLE-LABEL: @k1_f0(
-; TABLE-NEXT:    call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.kernel.k1_f0.lds) ]
 ; TABLE-NEXT:    call void @f0()
 ; TABLE-NEXT:    ret void
 ;

@@ -40,8 +40,7 @@ define void @func() {
 }
 
 ; This kernel calls a function that uses LDS so needs the block
-; CHECK-LABEL: @kern_call()
-; CHECK: call void @llvm.donothing() [ "ExplicitUse"(ptr addrspace(3) @llvm.amdgcn.module.lds) ]
+; CHECK-LABEL: @kern_call() #0
 ; CHECK: call void @func()
 ; CHECK: %dec = atomicrmw fsub ptr addrspace(3) @llvm.amdgcn.module.lds, float 2.000000e+00 monotonic, align 8
 define amdgpu_kernel void @kern_call() {
@@ -51,8 +50,7 @@ define amdgpu_kernel void @kern_call() {
 }
 
 ; This kernel does alloc the LDS block as it makes no calls
-; CHECK-LABEL: @kern_empty()
-; CHECK-NOT: call void @llvm.donothing()
+; CHECK-LABEL: @kern_empty() #1
 define spir_kernel void @kern_empty() #0{
   ret void
 }
@@ -62,4 +60,6 @@ define spir_kernel void @kern_empty() #0{
 declare amdgpu_kernel void @kernel_declaration()
 
 attributes #0 = { "amdgpu-elide-module-lds" }
-; CHECK: attributes #0 = { "amdgpu-elide-module-lds" }
+
+; CHECK: attributes #0 = { "amdgpu-lds-size"="12" }
+; CHECK: attributes #1 = { "amdgpu-elide-module-lds" }
