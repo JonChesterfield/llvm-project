@@ -43,6 +43,12 @@ AMDGPUMachineFunction::AMDGPUMachineFunction(const Function &F,
   // Assume the attribute allocates before any known GDS globals.
   StaticGDSSize = GDSSize;
 
+  // The two separate variables are only profitable when the LDS module lowering
+  // pass is disabled. If graphics does not use dynamic LDS, this is never
+  // profitable. Leaving cleanup for a later change.
+  LDSSize = F.getFnAttributeAsParsedInteger("amdgpu-lds-size", 0);
+  StaticLDSSize = LDSSize;
+
   CallingConv::ID CC = F.getCallingConv();
   if (CC == CallingConv::AMDGPU_KERNEL || CC == CallingConv::SPIR_KERNEL)
     ExplicitKernArgSize = ST.getExplicitKernArgSize(F, MaxKernArgAlign);
@@ -65,6 +71,42 @@ unsigned AMDGPUMachineFunction::allocateLDSGlobal(const DataLayout &DL,
 
   unsigned Offset;
   if (GV.getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS) {
+
+    std::optional<uint32_t> MaybeAbs = getLDSAbsoluteAddress(GV);
+    if (MaybeAbs) {
+      // Absolute address LDS variables that exist prior to the LDS lowering
+      // pass raise a fatal error in that pass. These failure modes are only
+      // reachable if that lowering pass is disabled or broken. If/when adding
+      // support for absolute addresses on user specified variables, the
+      // alignment check moves to the lowering pass and the frame calculation
+      // needs to take the user variables into consideration.
+
+      uint32_t ObjectStart = *MaybeAbs;
+
+      if (ObjectStart != alignTo(ObjectStart, Alignment)) {
+        report_fatal_error("Absolute address LDS variable inconsistent with "
+                           "variable alignment");
+      }
+
+      if (isModuleEntryFunction()) {
+        // If this is a module entry function, we can also sanity check against
+        // the static frame. Strictly it would be better to check against the
+        // attribute, i.e. that the variable is within the always-allocated
+        // section, and not within some other non-absolute-address object
+        // allocated here, but the extra error detection is minimal and we would
+        // have to pass the Function around or cache the attribute value.
+        uint32_t ObjectEnd =
+            ObjectStart + DL.getTypeAllocSize(GV.getValueType());
+        if (ObjectEnd > StaticLDSSize) {
+          report_fatal_error(
+              "Absolute address LDS variable outside of static frame");
+        }
+      }
+
+      Entry.first->second = ObjectStart;
+      return ObjectStart;
+    }
+
     /// TODO: We should sort these to minimize wasted space due to alignment
     /// padding. Currently the padding is decided by the first encountered use
     /// during lowering.
@@ -140,6 +182,11 @@ void AMDGPUMachineFunction::allocateKnownAddressLDSGlobal(const Function &F) {
 
     const GlobalVariable *GV = M->getNamedGlobal(ModuleLDSName);
     const GlobalVariable *KV = getKernelLDSGlobalFromFunction(F);
+
+    // Note: When removing allocateKnownAddressLDSGlobal, the write to
+    // setDynLDSAlign will be lost. If the dynamic LDS variable is not used in
+    // the kernel, nothing will set that alignment. Need to update the comments
+    // in lowering about dynamic variables.
     const GlobalVariable *Dyn = getKernelDynLDSGlobalFromFunction(F);
 
     if (GV && !canElideModuleLDS(F)) {
