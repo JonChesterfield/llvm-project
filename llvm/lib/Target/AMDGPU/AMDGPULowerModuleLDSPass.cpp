@@ -333,23 +333,27 @@ class AMDGPULowerModuleLDS : public ModulePass {
   }
 
 public:
+  TargetMachine *TM = nullptr;
   static char ID;
 
   AMDGPULowerModuleLDS()
       : ModulePass(ID)
 
   {
+    initializeAMDGPULowerModuleLDSPass(*PassRegistry::getPassRegistry());
+
     // Asserts
     // assert(PI && "getAnalysis for unregistered pass!");
     // Can change to getAnalysisIfAvailable, which asserts
     // assert(Resolver && "Pass not resident in a PassManager object!");
     // Thus... how do I get at the TargetMachine from a ModulePass?
 
-    TargetPassConfig &TPC = getAnalysis<TargetPassConfig>();
-    const TargetMachine &TM = TPC.getTM<TargetMachine>();
-    (void)TM;
-
-    initializeAMDGPULowerModuleLDSPass(*PassRegistry::getPassRegistry());
+#if 0
+    fprintf(stderr, "Constructor\n");
+    // This crashes in old and new pass manager at present
+    auto *TPC = getAnalysisIfAvailable<TargetPassConfig>();
+    fprintf(stderr, "Constructor done\n");
+#endif
   }
 
   using FunctionVariableMap = DenseMap<Function *, DenseSet<GlobalVariable *>>;
@@ -1116,7 +1120,26 @@ public:
     return KernelToCreatedDynamicLDS;
   }
 
+  bool doInitialization(Module &) override {
+    // When called as -amdgpu-lower-module-lds, this function runs and sets up
+    // TM When called as -passes=amdgpu-lower-module-lds, this function does not
+    // run
+    auto *TPC = getAnalysisIfAvailable<TargetPassConfig>();
+    if (!TPC)
+      report_fatal_error("TargetMachine is required");
+
+    TM = &TPC->getTM<TargetMachine>();
+
+    fprintf(stderr, "doInitialization ran\n");
+    return false;
+  }
+
   bool runOnModule(Module &M) override {
+
+    if (!TM) {
+      report_fatal_error("TargetMachine is required by runOnModule");
+    }
+
     CallGraph CG = CallGraph(M);
     bool Changed = superAlignLDSGlobals(M);
 
