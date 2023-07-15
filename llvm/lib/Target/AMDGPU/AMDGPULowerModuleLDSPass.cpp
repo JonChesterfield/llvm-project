@@ -341,7 +341,7 @@ public:
   {
     // Asserts
     // assert(PI && "getAnalysis for unregistered pass!");
-    // Can cayhnge to getAnalysisIfAvailable, which asserts
+    // Can change to getAnalysisIfAvailable, which asserts
     // assert(Resolver && "Pass not resident in a PassManager object!");
     // Thus... how do I get at the TargetMachine from a ModulePass?
 
