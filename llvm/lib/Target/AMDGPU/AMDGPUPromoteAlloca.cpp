@@ -1014,6 +1014,9 @@ bool AMDGPUPromoteAllocaImpl::tryPromoteAllocaToLDS(AllocaInst &I,
 
   Function *F = I.getParent()->getParent();
 
+
+  // TODO: Increment the first value of amdgpu-lds-size and
+  // assign an absolute address to the variable.
   Type *GVTy = ArrayType::get(I.getAllocatedType(), WorkGroupSize);
   GlobalVariable *GV = new GlobalVariable(
       *Mod, GVTy, false, GlobalValue::InternalLinkage, PoisonValue::get(GVTy),
