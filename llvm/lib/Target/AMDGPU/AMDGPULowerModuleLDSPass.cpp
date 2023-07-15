@@ -340,6 +340,7 @@ public:
       : ModulePass(ID)
 
   {
+    fprintf(stderr, "Called LowerModuleLDS constructor\n");
     initializeAMDGPULowerModuleLDSPass(*PassRegistry::getPassRegistry());
 
     // Asserts
@@ -1136,6 +1137,13 @@ public:
 
   bool runOnModule(Module &M) override {
 
+    fprintf(stderr, "calling runOnModule\n");
+
+    auto *TPC = getAnalysisIfAvailable<TargetPassConfig>();
+    if (!TPC)
+      report_fatal_error(
+          "TargetMachine get if available failed in runonmodule");
+
     if (!TM) {
       report_fatal_error("TargetMachine is required by runOnModule");
     }
@@ -1307,6 +1315,7 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    fprintf(stderr, "Called getAnalysisUsage\n");
     AU.addRequired<TargetPassConfig>();
   }
 
@@ -1588,7 +1597,11 @@ ModulePass *llvm::createAMDGPULowerModuleLDSPass() {
 }
 
 PreservedAnalyses AMDGPULowerModuleLDSPass::run(Module &M,
-                                                ModuleAnalysisManager &) {
+                                                ModuleAnalysisManager &AM) {
+  fprintf(stderr, "LDSPass::run\n");
+  // Docs suggest this, but it doesn't compile
+  // No type named result
+  auto wot = AM.getResult<TargetPassConfig>(M);
   return AMDGPULowerModuleLDS().runOnModule(M) ? PreservedAnalyses::none()
                                                : PreservedAnalyses::all();
 }
