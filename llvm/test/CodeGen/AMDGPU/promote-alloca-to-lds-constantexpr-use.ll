@@ -1,5 +1,5 @@
 ; RUN: opt -S -disable-promote-alloca-to-vector -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 -passes=amdgpu-promote-alloca < %s | FileCheck -check-prefix=IR %s
-; RUN: llc -disable-promote-alloca-to-vector -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 -amdgpu-enable-lower-module-lds=false < %s | FileCheck -check-prefix=ASM %s
+; RUN: llc -disable-promote-alloca-to-vector -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 < %s | FileCheck -check-prefix=ASM %s
 
 target datalayout = "A5"
 
@@ -152,55 +152,6 @@ entry:
   %load = load i32, ptr addrspace(5) %arrayidx, align 4
   store i32 %load, ptr addrspace(1) %out
   call void @callee(ptr addrspacecast (ptr addrspace(3) @some_dynamic_lds to ptr))
-  ret void
-}
-
-; IR-LABEL: @constant_expression_uses_some_lds_global_initializer(
-; IR-NOT: alloca
-; IR: llvm.amdgcn.workitem.id
-
-; ASM-LABEL: {{^}}constant_expression_uses_some_lds_global_initializer:
-; ASM: .amdhsa_group_segment_fixed_size 4096{{$}}
-define amdgpu_kernel void @constant_expression_uses_some_lds_global_initializer(ptr addrspace(1) nocapture %out, i32 %idx) #0 {
-entry:
-  %stack = alloca [4 x i32], align 4, addrspace(5)
-  %gep1 = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 1
-  %gep2 = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 2
-  %gep3 = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 3
-  store i32 9, ptr addrspace(5) %stack
-  store i32 10, ptr addrspace(5) %gep1
-  store i32 99, ptr addrspace(5) %gep2
-  store i32 43, ptr addrspace(5) %gep3
-  %arrayidx = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 %idx
-  %load = load i32, ptr addrspace(5) %arrayidx, align 4
-  store i32 %load, ptr addrspace(1) %out
-
-  store volatile i32 ptrtoint (ptr addrspace(1) @initializer_user_some to i32), ptr addrspace(1) undef
-  ret void
-}
-
-; We can't actually handle LDS initializers in global initializers,
-; but this should count as usage.
-
-; IR-LABEL: @constant_expression_uses_all_lds_global_initializer(
-; IR: alloca
-
-; ASM-LABEL: {{^}}constant_expression_uses_all_lds_global_initializer:
-; ASM: .group_segment_fixed_size: 65536
-define amdgpu_kernel void @constant_expression_uses_all_lds_global_initializer(ptr addrspace(1) nocapture %out, i32 %idx) #0 {
-entry:
-  %stack = alloca [4 x i32], align 4, addrspace(5)
-  %gep1 = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 1
-  %gep2 = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 2
-  %gep3 = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 3
-  store i32 9, ptr addrspace(5) %stack
-  store i32 10, ptr addrspace(5) %gep1
-  store i32 99, ptr addrspace(5) %gep2
-  store i32 43, ptr addrspace(5) %gep3
-  %arrayidx = getelementptr inbounds [4 x i32], ptr addrspace(5) %stack, i32 0, i32 %idx
-  %load = load i32, ptr addrspace(5) %arrayidx, align 4
-  store i32 %load, ptr addrspace(1) %out
-  store volatile i32 ptrtoint (ptr addrspace(1) @initializer_user_all to i32), ptr addrspace(1) undef
   ret void
 }
 

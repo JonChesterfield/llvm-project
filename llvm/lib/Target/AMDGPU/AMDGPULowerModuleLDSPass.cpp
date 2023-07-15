@@ -1093,6 +1093,9 @@ public:
           auto *I = dyn_cast<Instruction>(U.getUser());
           if (!I)
             continue;
+
+          // Fixme: This means not all dyn lds has an abs symbol by the end
+          // of this pass
           if (isKernelLDS(I->getFunction()))
             continue;
 
