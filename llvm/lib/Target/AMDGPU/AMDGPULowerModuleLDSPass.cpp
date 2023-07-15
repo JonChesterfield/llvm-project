@@ -186,6 +186,7 @@
 #include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -199,6 +200,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/OptimizedStructLayout.h"
+#include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 
@@ -333,7 +335,20 @@ class AMDGPULowerModuleLDS : public ModulePass {
 public:
   static char ID;
 
-  AMDGPULowerModuleLDS() : ModulePass(ID) {
+  AMDGPULowerModuleLDS()
+      : ModulePass(ID)
+
+  {
+    // Asserts
+    // assert(PI && "getAnalysis for unregistered pass!");
+    // Can cayhnge to getAnalysisIfAvailable, which asserts
+    // assert(Resolver && "Pass not resident in a PassManager object!");
+    // Thus... how do I get at the TargetMachine from a ModulePass?
+
+    TargetPassConfig &TPC = getAnalysis<TargetPassConfig>();
+    const TargetMachine &TM = TPC.getTM<TargetMachine>();
+    (void)TM;
+
     initializeAMDGPULowerModuleLDSPass(*PassRegistry::getPassRegistry());
   }
 
@@ -1268,6 +1283,10 @@ public:
     return Changed;
   }
 
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetPassConfig>();
+  }
+
 private:
   // Increase the alignment of LDS globals if necessary to maximise the chance
   // that we can use aligned LDS instructions to access them.
@@ -1533,9 +1552,13 @@ char AMDGPULowerModuleLDS::ID = 0;
 
 char &llvm::AMDGPULowerModuleLDSID = AMDGPULowerModuleLDS::ID;
 
-INITIALIZE_PASS(AMDGPULowerModuleLDS, DEBUG_TYPE,
-                "Lower uses of LDS variables from non-kernel functions", false,
-                false)
+INITIALIZE_PASS_BEGIN(AMDGPULowerModuleLDS, DEBUG_TYPE,
+                      "Lower uses of LDS variables from non-kernel functions",
+                      false, false)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+INITIALIZE_PASS_END(AMDGPULowerModuleLDS, DEBUG_TYPE,
+                    "Lower uses of LDS variables from non-kernel functions",
+                    false, false)
 
 ModulePass *llvm::createAMDGPULowerModuleLDSPass() {
   return new AMDGPULowerModuleLDS();
