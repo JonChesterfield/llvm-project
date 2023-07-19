@@ -252,6 +252,8 @@ hsa_status_t launch_kernel(hsa_agent_t dev_agent, hsa_executable_t executable,
   __atomic_store_n(&packet->header, header | (setup << 16), __ATOMIC_RELEASE);
   hsa_signal_store_relaxed(queue->doorbell_signal, packet_id);
 
+  fprintf(stderr, "loader fired a kernel\n");
+  
   // Wait until the kernel has completed execution on the device. Periodically
   // check the RPC client for work to be performed on the server.
   while (hsa_signal_wait_scacquire(
@@ -260,6 +262,9 @@ hsa_status_t launch_kernel(hsa_agent_t dev_agent, hsa_executable_t executable,
     if (rpc_status_t err = rpc_handle_server(device_id))
       handle_error(err);
 
+  fprintf(stderr, "loader made it past the kernel\n");
+
+  
   // Handle the server one more time in case the kernel exited with a pending
   // send still in flight.
   if (rpc_status_t err = rpc_handle_server(device_id))
@@ -304,6 +309,8 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
   if (hsa_status_t err = hsa_init())
     handle_error(err);
 
+  fprintf(stderr, "loader is a loader\n");
+  
   // Register a callback when the device encounters a memory fault.
   if (hsa_status_t err = hsa_amd_register_system_event_handler(
           [](const hsa_amd_event_t *event, void *) -> hsa_status_t {

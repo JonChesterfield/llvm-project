@@ -97,6 +97,11 @@ else()
   return()
 endif()
 
+message(warning "JC cmake debugging")
+message(warning "${gpu_test_architecture}")
+message(warning all_amdgpu_architectures)
+
+
 if("${gpu_test_architecture}" IN_LIST all_amdgpu_architectures)
   set(LIBC_GPU_TARGET_ARCHITECTURE_IS_AMDGPU TRUE)
   set(LIBC_GPU_TARGET_TRIPLE "amdgcn-amd-amdhsa")
@@ -108,6 +113,13 @@ elseif("${gpu_test_architecture}" IN_LIST all_nvptx_architectures)
 else()
   message(FATAL_ERROR "Unknown GPU architecture '${gpu_test_architecture}'")
 endif()
+
+
+message(warning "JC cmake debugging 2")
+message(warning LIBC_GPU_TARGET_ARCHITECTURE_IS_AMDGPU)
+message(warning ${LIBC_GPU_TARGET_ARCHITECTURE_IS_AMDGPU})
+message(warning LIBC_GPU_TARGET_ARCHITECTURE)
+message(warning ${LIBC_GPU_TARGET_ARCHITECTURE})
 
 if(LIBC_GPU_TARGET_ARCHITECTURE_IS_NVPTX)
   find_package(CUDAToolkit QUIET)

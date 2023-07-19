@@ -11,7 +11,7 @@
 #include "src/stdlib/atexit.h"
 #include "src/stdlib/exit.h"
 
-extern "C" int main(int argc, char **argv, char **envp);
+extern "C" int cmain(int argc, char **argv, char **envp);
 
 namespace __llvm_libc {
 
@@ -54,15 +54,17 @@ _begin(int argc, char **argv, char **env, void *rpc_shared_buffer) {
   // callbacks are run. So, we register them before running the init
   // array callbacks as they can potentially register their own atexit
   // callbacks.
+#if 0
   __llvm_libc::atexit(&__llvm_libc::call_fini_array_callbacks);
   __llvm_libc::call_init_array_callbacks(argc, argv, env);
+#endif
 }
 
 extern "C" [[gnu::visibility("protected"), clang::amdgpu_kernel]] void
 _start(int argc, char **argv, char **envp, int *ret) {
   // Invoke the 'main' function with every active thread that the user launched
   // the _start kernel with.
-  __atomic_fetch_or(ret, main(argc, argv, envp), __ATOMIC_RELAXED);
+  __atomic_fetch_or(ret, cmain(argc, argv, envp), __ATOMIC_RELAXED);
 }
 
 extern "C" [[gnu::visibility("protected"), clang::amdgpu_kernel]] void
@@ -70,5 +72,7 @@ _end(int retval) {
   // Only a single thread should call `exit` here, the rest should gracefully
   // return from the kernel. This is so only one thread calls the destructors
   // registred with 'atexit' above.
+#if 0
   __llvm_libc::exit(retval);
+  #endif
 }

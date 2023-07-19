@@ -21,3 +21,8 @@ void write_to_stderr(cpp::string_view msg) {
 }
 
 } // namespace __llvm_libc
+
+
+extern "C" void write_to_stderr(const char *msg) {
+  __llvm_libc::write_to_stderr(msg);
+}
