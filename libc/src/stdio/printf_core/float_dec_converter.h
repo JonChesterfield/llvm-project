@@ -880,7 +880,7 @@ LIBC_INLINE int convert_float_dec_auto_typed(Writer *writer,
     // TODO: Find a better way to calculate the number of digits in the
     // initial block and exponent.
     char buf[IntegerToString::dec_bufsize<intmax_t>()];
-    auto int_to_str = *IntegerToString::dec(digits, buf);
+    cpp::string_view int_to_str = IntegerToString::dec(digits, buf);
     block_width = int_to_str.size();
   }
 

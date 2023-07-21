@@ -60,9 +60,7 @@ public:
   StringStream &operator<<(T val) {
     char buffer[IntegerToString::dec_bufsize<T>()];
     auto int_to_str = IntegerToString::dec(val, buffer);
-    if (int_to_str)
-      return operator<<(*int_to_str);
-    return *this;
+    return operator<<(int_to_str);
   }
 
   template <typename T, enable_if_t<is_floating_point_v<T>, int> = 0>

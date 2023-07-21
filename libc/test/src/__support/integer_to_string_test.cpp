@@ -19,7 +19,7 @@ using __llvm_libc::IntegerToString;
 using __llvm_libc::cpp::string_view;
 
 TEST(LlvmLibcIntegerToStringTest, UINT8) {
-  char buf[IntegerToString::dec_bufsize<uint8_t>()];
+  char buf[IntegerToString::dec_bufsize<uint8_t>() + 1];
   EXPECT_EQ(*IntegerToString::dec(uint8_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(uint8_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(uint8_t(12), buf), string_view("12"));
@@ -28,8 +28,18 @@ TEST(LlvmLibcIntegerToStringTest, UINT8) {
   EXPECT_EQ(*IntegerToString::dec(uint8_t(-1), buf), string_view("255"));
 }
 
+TEST(LlvmLibcIntegerToStringExactTest, UINT8) {
+  char buf[IntegerToString::dec_bufsize<uint8_t>()];
+  EXPECT_EQ(IntegerToString::dec(uint8_t(0), buf), string_view("0"));
+  EXPECT_EQ(IntegerToString::dec(uint8_t(1), buf), string_view("1"));
+  EXPECT_EQ(IntegerToString::dec(uint8_t(12), buf), string_view("12"));
+  EXPECT_EQ(IntegerToString::dec(uint8_t(123), buf), string_view("123"));
+  EXPECT_EQ(IntegerToString::dec(uint8_t(UINT8_MAX), buf), string_view("255"));
+  EXPECT_EQ(IntegerToString::dec(uint8_t(-1), buf), string_view("255"));
+}
+
 TEST(LlvmLibcIntegerToStringTest, INT8) {
-  char buf[IntegerToString::dec_bufsize<int8_t>()];
+  char buf[IntegerToString::dec_bufsize<int8_t>() + 1];
   EXPECT_EQ(*IntegerToString::dec(int8_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(int8_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(int8_t(12), buf), string_view("12"));
@@ -40,8 +50,20 @@ TEST(LlvmLibcIntegerToStringTest, INT8) {
   EXPECT_EQ(*IntegerToString::dec(int8_t(INT8_MIN), buf), string_view("-128"));
 }
 
+TEST(LlvmLibcIntegerToStringExactTest, INT8) {
+  char buf[IntegerToString::dec_bufsize<int8_t>()];
+  EXPECT_EQ(IntegerToString::dec(int8_t(0), buf), string_view("0"));
+  EXPECT_EQ(IntegerToString::dec(int8_t(1), buf), string_view("1"));
+  EXPECT_EQ(IntegerToString::dec(int8_t(12), buf), string_view("12"));
+  EXPECT_EQ(IntegerToString::dec(int8_t(123), buf), string_view("123"));
+  EXPECT_EQ(IntegerToString::dec(int8_t(-12), buf), string_view("-12"));
+  EXPECT_EQ(IntegerToString::dec(int8_t(-123), buf), string_view("-123"));
+  EXPECT_EQ(IntegerToString::dec(int8_t(INT8_MAX), buf), string_view("127"));
+  EXPECT_EQ(IntegerToString::dec(int8_t(INT8_MIN), buf), string_view("-128"));
+}
+
 TEST(LlvmLibcIntegerToStringTest, UINT16) {
-  char buf[IntegerToString::dec_bufsize<uint16_t>()];
+  char buf[IntegerToString::dec_bufsize<uint16_t>()+1];
   EXPECT_EQ(*IntegerToString::dec(uint16_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(uint16_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(uint16_t(12), buf), string_view("12"));
@@ -53,8 +75,21 @@ TEST(LlvmLibcIntegerToStringTest, UINT16) {
   EXPECT_EQ(*IntegerToString::dec(uint16_t(-1), buf), string_view("65535"));
 }
 
+TEST(LlvmLibcIntegerToStringExactTest, UINT16) {
+  char buf[IntegerToString::dec_bufsize<uint16_t>()];
+  EXPECT_EQ(IntegerToString::dec(uint16_t(0), buf), string_view("0"));
+  EXPECT_EQ(IntegerToString::dec(uint16_t(1), buf), string_view("1"));
+  EXPECT_EQ(IntegerToString::dec(uint16_t(12), buf), string_view("12"));
+  EXPECT_EQ(IntegerToString::dec(uint16_t(123), buf), string_view("123"));
+  EXPECT_EQ(IntegerToString::dec(uint16_t(1234), buf), string_view("1234"));
+  EXPECT_EQ(IntegerToString::dec(uint16_t(12345), buf), string_view("12345"));
+  EXPECT_EQ(IntegerToString::dec(uint16_t(UINT16_MAX), buf),
+            string_view("65535"));
+  EXPECT_EQ(IntegerToString::dec(uint16_t(-1), buf), string_view("65535"));
+}
+
 TEST(LlvmLibcIntegerToStringTest, INT16) {
-  char buf[IntegerToString::dec_bufsize<int16_t>()];
+  char buf[IntegerToString::dec_bufsize<int16_t>()+1];
   EXPECT_EQ(*IntegerToString::dec(int16_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(int16_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(int16_t(12), buf), string_view("12"));
@@ -73,7 +108,7 @@ TEST(LlvmLibcIntegerToStringTest, INT16) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT32) {
-  char buf[IntegerToString::dec_bufsize<uint32_t>()];
+  char buf[IntegerToString::dec_bufsize<uint32_t>()+1];
   EXPECT_EQ(*IntegerToString::dec(uint32_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(uint32_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(uint32_t(12), buf), string_view("12"));
@@ -95,7 +130,7 @@ TEST(LlvmLibcIntegerToStringTest, UINT32) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, INT32) {
-  char buf[IntegerToString::dec_bufsize<int32_t>()];
+  char buf[IntegerToString::dec_bufsize<int32_t>()+1];
   EXPECT_EQ(*IntegerToString::dec(int32_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(int32_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(int32_t(12), buf), string_view("12"));
@@ -133,7 +168,7 @@ TEST(LlvmLibcIntegerToStringTest, INT32) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT64) {
-  char buf[IntegerToString::dec_bufsize<uint64_t>()];
+  char buf[IntegerToString::dec_bufsize<uint64_t>()+1];
   EXPECT_EQ(*IntegerToString::dec(uint64_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(uint64_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(uint64_t(12), buf), string_view("12"));
@@ -158,7 +193,7 @@ TEST(LlvmLibcIntegerToStringTest, UINT64) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, INT64) {
-  char buf[IntegerToString::dec_bufsize<int64_t>()];
+  char buf[IntegerToString::dec_bufsize<int64_t>()+1];
   EXPECT_EQ(*IntegerToString::dec(int64_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::dec(int64_t(1), buf), string_view("1"));
   EXPECT_EQ(*IntegerToString::dec(int64_t(12), buf), string_view("12"));
@@ -200,7 +235,7 @@ TEST(LlvmLibcIntegerToStringTest, INT64) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT64_Base_8) {
-  char buf[IntegerToString::oct_bufsize<uint64_t>()];
+  char buf[IntegerToString::oct_bufsize<uint64_t>()+1];
   EXPECT_EQ((*IntegerToString::oct(uint64_t(0), buf)), string_view("0"));
   EXPECT_EQ((*IntegerToString::oct(uint64_t(012345), buf)),
             string_view("12345"));
@@ -211,7 +246,7 @@ TEST(LlvmLibcIntegerToStringTest, UINT64_Base_8) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT64_Base_16) {
-  char buf[IntegerToString::hex_bufsize<uint64_t>()];
+  char buf[IntegerToString::hex_bufsize<uint64_t>()+1];
   EXPECT_EQ(*IntegerToString::hex(uint64_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::hex(uint64_t(0x12345), buf), string_view("12345"));
   EXPECT_EQ((*IntegerToString::hex(uint64_t(0x123456789abcdef), buf)),
@@ -223,7 +258,7 @@ TEST(LlvmLibcIntegerToStringTest, UINT64_Base_16) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT64_Base_2) {
-  char buf[IntegerToString::bin_bufsize<uint64_t>()];
+  char buf[IntegerToString::bin_bufsize<uint64_t>()+1];
   EXPECT_EQ(*IntegerToString::bin(uint64_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::bin(uint64_t(0xf0c), buf),
             string_view("111100001100"));
@@ -236,7 +271,7 @@ TEST(LlvmLibcIntegerToStringTest, UINT64_Base_2) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT64_Base_36) {
-  char buf[IntegerToString::bufsize<36, uint64_t>()];
+  char buf[IntegerToString::bufsize<36, uint64_t>()+1];
   EXPECT_EQ(*IntegerToString::convert<36>(uint64_t(0), buf), string_view("0"));
   EXPECT_EQ(*IntegerToString::convert<36>(uint64_t(12345), buf),
             string_view("9ix"));
@@ -251,40 +286,40 @@ TEST(LlvmLibcIntegerToStringTest, UINT64_Base_36) {
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT128_Base_16) {
-  char buf[IntegerToString::hex_bufsize<UInt128>()];
-  EXPECT_EQ(*IntegerToString::hex(static_cast<UInt128>(0), buf),
+  char buf[IntegerToString::hex_bufsize<UInt128>()+1];
+  EXPECT_EQ(IntegerToString::hex(static_cast<UInt128>(0), buf),
             string_view("00000000000000000000000000000000"));
-  EXPECT_EQ(*IntegerToString::hex(static_cast<UInt128>(0x12345), buf),
+  EXPECT_EQ(IntegerToString::hex(static_cast<UInt128>(0x12345), buf),
             string_view("00000000000000000000000000012345"));
-  EXPECT_EQ((*IntegerToString::hex(static_cast<UInt128>(0x1234) << 112, buf)),
+  EXPECT_EQ((IntegerToString::hex(static_cast<UInt128>(0x1234) << 112, buf)),
             string_view("12340000000000000000000000000000"));
-  EXPECT_EQ((*IntegerToString::hex(static_cast<UInt128>(0x1234) << 48, buf)),
+  EXPECT_EQ((IntegerToString::hex(static_cast<UInt128>(0x1234) << 48, buf)),
             string_view("00000000000000001234000000000000"));
-  EXPECT_EQ((*IntegerToString::hex(static_cast<UInt128>(0x1234) << 52, buf)),
+  EXPECT_EQ((IntegerToString::hex(static_cast<UInt128>(0x1234) << 52, buf)),
             string_view("00000000000000012340000000000000"));
 }
 
 TEST(LlvmLibcIntegerToStringTest, UINT256_Base_16) {
   using UInt256 = __llvm_libc::cpp::UInt<256>;
-  char buf[IntegerToString::hex_bufsize<UInt256>()];
+  char buf[IntegerToString::hex_bufsize<UInt256>()+1];
   EXPECT_EQ(
-      *IntegerToString::hex(static_cast<UInt256>(0), buf),
+      IntegerToString::hex(static_cast<UInt256>(0), buf),
       string_view(
           "0000000000000000000000000000000000000000000000000000000000000000"));
   EXPECT_EQ(
-      *IntegerToString::hex(static_cast<UInt256>(0x12345), buf),
+      IntegerToString::hex(static_cast<UInt256>(0x12345), buf),
       string_view(
           "0000000000000000000000000000000000000000000000000000000000012345"));
   EXPECT_EQ(
-      (*IntegerToString::hex(static_cast<UInt256>(0x1234) << 112, buf)),
+      (IntegerToString::hex(static_cast<UInt256>(0x1234) << 112, buf)),
       string_view(
           "0000000000000000000000000000000012340000000000000000000000000000"));
   EXPECT_EQ(
-      (*IntegerToString::hex(static_cast<UInt256>(0x1234) << 116, buf)),
+      (IntegerToString::hex(static_cast<UInt256>(0x1234) << 116, buf)),
       string_view(
           "0000000000000000000000000000000123400000000000000000000000000000"));
   EXPECT_EQ(
-      (*IntegerToString::hex(static_cast<UInt256>(0x1234) << 240, buf)),
+      (IntegerToString::hex(static_cast<UInt256>(0x1234) << 240, buf)),
       string_view(
           "1234000000000000000000000000000000000000000000000000000000000000"));
 }

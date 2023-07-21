@@ -48,8 +48,8 @@ cpp::enable_if_t<cpp::is_integral_v<T> && (sizeof(T) > sizeof(uint64_t)),
 describeValue(T Value) {
   static_assert(sizeof(T) % 8 == 0, "Unsupported size of UInt");
   char buf[IntegerToString::hex_bufsize<T>()];
-  IntegerToString::hex(Value, buf, false);
-  return "0x" + cpp::string(buf, sizeof(buf));
+  cpp::string_view view = IntegerToString::hex(Value, buf, false);
+  return "0x" + cpp::string(view.data(), view.size());
 }
 
 // When the value is of a standard integral type, just display it as normal.

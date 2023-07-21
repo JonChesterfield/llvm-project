@@ -51,8 +51,8 @@ template <typename T> TestLogger &TestLogger::operator<<(T t) {
                 sizeof(T) > sizeof(uint64_t)) {
     static_assert(sizeof(T) % 8 == 0, "Unsupported size of UInt");
     char buf[IntegerToString::hex_bufsize<T>()];
-    IntegerToString::hex(t, buf, false);
-    return *this << "0x" << cpp::string_view(buf, sizeof(buf));
+    cpp::string_view view = IntegerToString::hex(t, buf, false);
+    return *this << "0x" << view;
   } else {
     return *this << cpp::to_string(t);
   }

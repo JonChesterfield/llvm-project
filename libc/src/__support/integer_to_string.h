@@ -169,8 +169,8 @@ public:
                                              (sizeof(T) > sizeof(uintmax_t)) &&
                                              sizeof(T) % sizeof(uintmax_t) == 0,
                                          int> = 0>
-  LIBC_INLINE static cpp::optional<cpp::string_view>
-  hex(T val, cpp::span<char> buffer, bool lowercase = true) {
+  LIBC_INLINE static cpp::string_view hex(T val, cpp::span<char> buffer,
+                                          bool lowercase = true) {
     // We will assume the buffer is exactly sized, which will be the case if
     // it was sized using the bufsize method.
     constexpr size_t BLOCKS = sizeof(T) / sizeof(uintmax_t);
@@ -198,6 +198,45 @@ public:
   template <typename T, cpp::enable_if_t<cpp::is_integral_v<T>, int> = 0>
   LIBC_INLINE static cpp::optional<cpp::string_view>
   bin(T val, cpp::span<char> buffer) {
+    return convert<2>(val, buffer);
+  }
+
+  // Overloads for exactly sized char arrays. If the buffer is statically known
+  // then convert can return a string_view instead of an optional<string_view>
+  // Uses a char reference as that represents known size and unknown data
+  template <uint8_t BASE, typename T,
+            cpp::enable_if_t<2 <= BASE && BASE <= 36 && cpp::is_integral_v<T>,
+                             int> = 0>
+  LIBC_INLINE static cpp::string_view
+  convert(T val, char (&buffer)[bufsize<BASE, T>()], bool lowercase = true) {
+    cpp::span<char> span(buffer, buffer + sizeof(buffer));
+    if (cpp::is_signed_v<T>)
+      return convert_intmax(intmax_t(val), span, lowercase, BASE);
+    else
+      return convert_uintmax(uintmax_t(val), span, lowercase, BASE);
+  }
+
+  template <typename T, cpp::enable_if_t<cpp::is_integral_v<T>, int> = 0>
+  LIBC_INLINE static cpp::string_view dec(T val,
+                                          char (&buffer)[bufsize<10, T>()]) {
+    return convert<10>(val, buffer);
+  }
+
+  template <typename T, cpp::enable_if_t<cpp::is_integral_v<T>, int> = 0>
+  LIBC_INLINE static cpp::string_view hex(T val,
+                                          char (&buffer)[bufsize<16, T>()]) {
+    return convert<16>(val, buffer);
+  }
+
+  template <typename T, cpp::enable_if_t<cpp::is_integral_v<T>, int> = 0>
+  LIBC_INLINE static cpp::string_view oct(T val,
+                                          char (&buffer)[bufsize<8, T>()]) {
+    return convert<8>(val, buffer);
+  }
+
+  template <typename T, cpp::enable_if_t<cpp::is_integral_v<T>, int> = 0>
+  LIBC_INLINE static cpp::string_view bin(T val,
+                                          char (&buffer)[bufsize<2, T>()]) {
     return convert<2>(val, buffer);
   }
 };
