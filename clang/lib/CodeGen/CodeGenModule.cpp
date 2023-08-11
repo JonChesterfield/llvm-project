@@ -2074,6 +2074,7 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
   // starting with the default for this optimization level.
   bool ShouldAddOptNone =
       !CodeGenOpts.DisableO0ImplyOptNone && CodeGenOpts.OptimizationLevel == 0;
+
   // We can't add optnone in the following cases, it won't pass the verifier.
   ShouldAddOptNone &= !D->hasAttr<MinSizeAttr>();
   ShouldAddOptNone &= !D->hasAttr<AlwaysInlineAttr>();

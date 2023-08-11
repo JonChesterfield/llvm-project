@@ -23,6 +23,7 @@
 #include "TargetInfo/NVPTXTargetInfo.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/CodeGen/ExpandVAIntrinsics.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
@@ -261,6 +262,12 @@ void NVPTXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           PM.addPass(GenericToNVVMPass());
           return true;
         }
+
+        if (PassName == "expand-va-intrinsics") {
+          PM.addPass(ExpandVAIntrinsicsPass());
+          return true;
+        }
+
         return false;
       });
 
@@ -376,6 +383,8 @@ void NVPTXPassConfig::addIRPasses() {
     addAddressSpaceInferencePasses();
     addStraightLineScalarOptimizationPasses();
   }
+
+  addPass(createExpandVAIntrinsicsPass());
 
   addPass(createAtomicExpandPass());
   addPass(createNVPTXCtorDtorLoweringLegacyPass());

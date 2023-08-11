@@ -265,7 +265,7 @@ public:
                         MacroBuilder &Builder) const override;
 
   BuiltinVaListKind getBuiltinVaListKind() const override {
-    return TargetInfo::CharPtrBuiltinVaList;
+    return TargetInfo::VoidPtrBuiltinVaList;
   }
 
   bool isValidCPUName(StringRef Name) const override {

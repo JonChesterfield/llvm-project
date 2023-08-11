@@ -302,6 +302,12 @@ static llvm::Value *emitRoundPointerUpToAlignment(CodeGenFunction &CGF,
   // OverflowArgArea = (OverflowArgArea + Align - 1) & -Align;
   llvm::Value *RoundUp = CGF.Builder.CreateConstInBoundsGEP1_32(
       CGF.Builder.getInt8Ty(), Ptr, Align.getQuantity() - 1);
+
+  // TODO: It really should be possible to get the right addrspace annotation on
+  // the gep directly
+  RoundUp = CGF.Builder.CreatePointerBitCastOrAddrSpaceCast(
+      RoundUp, CGF.AllocaInt8PtrTy, Ptr->getName() + ".cast");
+
   return CGF.Builder.CreateIntrinsic(
       llvm::Intrinsic::ptrmask, {CGF.AllocaInt8PtrTy, CGF.IntPtrTy},
       {RoundUp, llvm::ConstantInt::get(CGF.IntPtrTy, -Align.getQuantity())},
@@ -4018,6 +4024,7 @@ void X86_64ABIInfo::computeInfo(CGFunctionInfo &FI) const {
   }
 }
 
+#if 0
 static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
                                          Address VAListAddr, QualType Ty) {
   Address overflow_arg_area_p =
@@ -4056,9 +4063,19 @@ static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
   // AMD64-ABI 3.5.7p5: Step 11. Return the fetched type.
   return Address(Res, LTy, Align);
 }
-
+#endif
 Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
+
+  // hacky hack
+  #if 1
+  return EmitVAArgInstr(CGF, VAListAddr, Ty, ABIArgInfo::getDirect());
+  #else
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, false,
+                          getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(4),
+                          /*AllowHigherAlign=*/true);
+
   // Assume that va_list type is correct; should be pointer to LLVM type:
   // struct {
   //   i32 gp_offset;
@@ -4243,6 +4260,7 @@ Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
   Address ResAddr = emitMergePHI(CGF, RegAddr, InRegBlock, MemAddr, InMemBlock,
                                  "vaarg.addr");
   return ResAddr;
+  #endif
 }
 
 Address X86_64ABIInfo::EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
@@ -7284,7 +7302,12 @@ void NVPTXABIInfo::computeInfo(CGFunctionInfo &FI) const {
 
 Address NVPTXABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                 QualType Ty) const {
-  llvm_unreachable("NVPTX does not support varargs");
+  return EmitVAArgInstr(CGF, VAListAddr, Ty, ABIArgInfo::getDirect());
+  bool IsIndirect = false;
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
+                          getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(4),
+                          /*AllowHigherAlign=*/true);
 }
 
 void NVPTXTargetCodeGenInfo::setTargetAttributes(
@@ -9275,7 +9298,17 @@ void AMDGPUABIInfo::computeInfo(CGFunctionInfo &FI) const {
 
 Address AMDGPUABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
-  llvm_unreachable("AMDGPU does not support varargs");
+
+  // This getDirect thing should probably be an unconditional true, I don't think
+  // there's any point to messing around with indirect arguments in this context
+  return EmitVAArgInstr(CGF, VAListAddr, Ty, ABIArgInfo::getDirect());
+  
+  bool IsIndirect = false;
+  // allowhigheralign requires an addrspace fix in emitRoundPointerUpToAlignment
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
+                          getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(4),
+                          /*AllowHigherAlign=*/true);
 }
 
 ABIArgInfo AMDGPUABIInfo::classifyReturnType(QualType RetTy) const {

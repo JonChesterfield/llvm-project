@@ -739,6 +739,8 @@ public:
   }
 
   BuiltinVaListKind getBuiltinVaListKind() const override {
+    // hobble that
+    return TargetInfo::VoidPtrBuiltinVaList;
     return TargetInfo::X86_64ABIBuiltinVaList;
   }
 
