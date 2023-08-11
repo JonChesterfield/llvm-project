@@ -7,7 +7,8 @@ namespace llvm {
 
 class Module;
 
- struct ExpandVAIntrinsicsPass : PassInfoMixin<ExpandVAIntrinsicsPass> {
+ class ExpandVAIntrinsicsPass : public PassInfoMixin<ExpandVAIntrinsicsPass> {
+ public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
