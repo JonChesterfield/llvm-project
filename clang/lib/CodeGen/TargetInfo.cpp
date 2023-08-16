@@ -4024,7 +4024,6 @@ void X86_64ABIInfo::computeInfo(CGFunctionInfo &FI) const {
   }
 }
 
-#if 0
 static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
                                          Address VAListAddr, QualType Ty) {
   Address overflow_arg_area_p =
@@ -4063,19 +4062,9 @@ static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
   // AMD64-ABI 3.5.7p5: Step 11. Return the fetched type.
   return Address(Res, LTy, Align);
 }
-#endif
+
 Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
-
-  // hacky hack
-  #if 1
-  return EmitVAArgInstr(CGF, VAListAddr, Ty, ABIArgInfo::getDirect());
-  #else
-  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, false,
-                          getContext().getTypeInfoInChars(Ty),
-                          CharUnits::fromQuantity(4),
-                          /*AllowHigherAlign=*/true);
-
   // Assume that va_list type is correct; should be pointer to LLVM type:
   // struct {
   //   i32 gp_offset;
@@ -4260,7 +4249,6 @@ Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
   Address ResAddr = emitMergePHI(CGF, RegAddr, InRegBlock, MemAddr, InMemBlock,
                                  "vaarg.addr");
   return ResAddr;
-  #endif
 }
 
 Address X86_64ABIInfo::EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
