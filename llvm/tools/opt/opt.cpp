@@ -363,7 +363,7 @@ static bool shouldPinPassToLegacyPM(StringRef Pass) {
       "global-merge",
       "pre-isel-intrinsic-lowering",
       "expand-reductions",
-      "expand-va-intrinsics",
+      "desugar-variadics",
       "indirectbr-expand",
       "generic-to-nvvm",
       "expandmemcmp",
@@ -455,7 +455,7 @@ int main(int argc, char **argv) {
   initializeWriteBitcodePassPass(Registry);
   initializeReplaceWithVeclibLegacyPass(Registry);
   initializeJMCInstrumenterPass(Registry);
-  initializeExpandVAIntrinsicsPass(Registry);
+  initializeDesugarVariadicsPass(Registry);
 
   SmallVector<PassPlugin, 1> PluginList;
   PassPlugins.setCallback([&](const std::string &PluginPath) {

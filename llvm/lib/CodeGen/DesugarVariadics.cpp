@@ -1,4 +1,4 @@
-//===-- ExpandVAIntrinsicsPass.cpp --------------------------------*- C++ -*-=//
+//===-- DesugarVariadicsPass.cpp --------------------------------*- C++ -*-=//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Can expand variadic functions, their calls, va_arg and the intrinsics.
+// Can desugar variadic functions, their calls, va_arg and the intrinsics.
 //
 // The lowering replaces the variadic argument (...) with a Int8Ty*, moves
 // function arguments into a alloca struct and passes that address instead.
@@ -22,7 +22,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/CodeGen/ExpandVAIntrinsics.h"
+#include "llvm/CodeGen/DesugarVariadics.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/IR/Constants.h"
@@ -37,22 +37,22 @@
 
 #include <cstdio>
 
-#define DEBUG_TYPE "expand-va-intrinsics"
+#define DEBUG_TYPE "desugar-variadics"
 
 using namespace llvm;
 
 static cl::opt<bool>
     ApplyToAllOverride(DEBUG_TYPE "-all", cl::init(false),
-                       cl::desc("Expand VA intrinsics in all functions"),
+                       cl::desc("Lower all variadic functions and calls"),
                        cl::Hidden);
 
 namespace {
 
-class ExpandVAIntrinsics : public ModulePass {
+class DesugarVariadics : public ModulePass {
 public:
   static char ID;
   bool ApplicableToAllDefault;
-  ExpandVAIntrinsics(bool A = false)
+  DesugarVariadics(bool A = false)
       : ModulePass(ID), ApplicableToAllDefault(A) {}
 
   static void ExpandVAArg(VAArgInst *Inst, const DataLayout &DL) {
@@ -344,17 +344,17 @@ public:
 };
 } // namespace
 
-char ExpandVAIntrinsics::ID = 0;
+char DesugarVariadics::ID = 0;
 
-INITIALIZE_PASS(ExpandVAIntrinsics, DEBUG_TYPE, "Expand VA intrinsics", false,
+INITIALIZE_PASS(DesugarVariadics, DEBUG_TYPE, "Desugar Variadics", false,
                 false)
 
-ModulePass *llvm::createExpandVAIntrinsicsPass(bool ApplicableToAllFunctions) {
-  return new ExpandVAIntrinsics(ApplicableToAllFunctions);
+ModulePass *llvm::createDesugarVariadicsPass(bool ApplicableToAllFunctions) {
+  return new DesugarVariadics(ApplicableToAllFunctions);
 }
 
-PreservedAnalyses ExpandVAIntrinsicsPass::run(Module &M,
+PreservedAnalyses DesugarVariadicsPass::run(Module &M,
                                               ModuleAnalysisManager &) {
-  return ExpandVAIntrinsics(false).runOnModule(M) ? PreservedAnalyses::none()
+  return DesugarVariadics(false).runOnModule(M) ? PreservedAnalyses::none()
                                                   : PreservedAnalyses::all();
 }

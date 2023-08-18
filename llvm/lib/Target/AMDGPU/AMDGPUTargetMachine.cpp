@@ -34,7 +34,7 @@
 #include "TargetInfo/AMDGPUTargetInfo.h"
 #include "Utils/AMDGPUBaseInfo.h"
 #include "llvm/Analysis/CGSCCPassManager.h"
-#include "llvm/CodeGen/ExpandVAIntrinsics.h"
+#include "llvm/CodeGen/DesugarVariadics.h"
 #include "llvm/CodeGen/GlobalISel/CSEInfo.h"
 #include "llvm/CodeGen/GlobalISel/IRTranslator.h"
 #include "llvm/CodeGen/GlobalISel/InstructionSelect.h"
@@ -618,9 +618,8 @@ void AMDGPUTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           PM.addPass(AMDGPUCtorDtorLoweringPass());
           return true;
         }
-        if (PassName == "expand-va-intrinsics") {
-          fprintf(stderr, "RegisterPassBuilder, addPass it\n");
-          PM.addPass(ExpandVAIntrinsicsPass());
+        if (PassName == "desugar-variadics") {
+          PM.addPass(DesugarVariadicsPass());
           return true;
         }
         return false;
@@ -1003,8 +1002,8 @@ void AMDGPUPassConfig::addIRPasses() {
   if (TM.getOptLevel() > CodeGenOpt::None)
     addPass(createAMDGPUAttributorPass());
 
-  // TODO: Decide where to run this
-  addPass(createExpandVAIntrinsicsPass(true));
+  // TODO: Choose where to put this in pipeline
+  addPass(createDesugarVariadicsPass(true));
 
   if (TM.getOptLevel() > CodeGenOpt::None)
     addPass(createInferAddressSpacesPass());

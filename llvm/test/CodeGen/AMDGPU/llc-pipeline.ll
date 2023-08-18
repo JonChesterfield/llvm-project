@@ -39,7 +39,7 @@
 ; GCN-O0-NEXT:        Function Alias Analysis Results
 ; GCN-O0-NEXT:    Lower OpenCL enqueued blocks
 ; GCN-O0-NEXT:    Lower uses of LDS variables from non-kernel functions
-; GCN-O0-NEXT:    Expand VA intrinsics
+; GCN-O0-NEXT:    Desugar Variadics
 ; GCN-O0-NEXT:    FunctionPass Manager
 ; GCN-O0-NEXT:      Expand Atomic instructions
 ; GCN-O0-NEXT:      Lower constant intrinsics
@@ -185,7 +185,7 @@
 ; GCN-O1-NEXT:    AMDGPU Attributor
 ; GCN-O1-NEXT:      FunctionPass Manager
 ; GCN-O1-NEXT:        Cycle Info Analysis
-; GCN-O1-NEXT:    Expand VA intrinsics
+; GCN-O1-NEXT:    Desugar Variadics
 ; GCN-O1-NEXT:    FunctionPass Manager
 ; GCN-O1-NEXT:      Infer address spaces
 ; GCN-O1-NEXT:      Dominator Tree Construction
@@ -458,7 +458,7 @@
 ; GCN-O1-OPTS-NEXT:    AMDGPU Attributor
 ; GCN-O1-OPTS-NEXT:      FunctionPass Manager
 ; GCN-O1-OPTS-NEXT:        Cycle Info Analysis
-; GCN-O1-OPTS-NEXT:    Expand VA intrinsics
+; GCN-O1-OPTS-NEXT:    Desugar Variadics
 ; GCN-O1-OPTS-NEXT:    FunctionPass Manager
 ; GCN-O1-OPTS-NEXT:      Infer address spaces
 ; GCN-O1-OPTS-NEXT:      Dominator Tree Construction
@@ -753,7 +753,7 @@
 ; GCN-O2-NEXT:    AMDGPU Attributor
 ; GCN-O2-NEXT:      FunctionPass Manager
 ; GCN-O2-NEXT:        Cycle Info Analysis
-; GCN-O2-NEXT:    Expand VA intrinsics
+; GCN-O2-NEXT:    Desugar Variadics
 ; GCN-O2-NEXT:    FunctionPass Manager
 ; GCN-O2-NEXT:      Infer address spaces
 ; GCN-O2-NEXT:      Dominator Tree Construction
@@ -1058,7 +1058,7 @@
 ; GCN-O3-NEXT:    AMDGPU Attributor
 ; GCN-O3-NEXT:      FunctionPass Manager
 ; GCN-O3-NEXT:        Cycle Info Analysis
-; GCN-O3-NEXT:    Expand VA intrinsics
+; GCN-O3-NEXT:    Desugar Variadics
 ; GCN-O3-NEXT:    FunctionPass Manager
 ; GCN-O3-NEXT:      Infer address spaces
 ; GCN-O3-NEXT:      Dominator Tree Construction

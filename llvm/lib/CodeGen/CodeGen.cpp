@@ -32,6 +32,7 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeCodeGenPreparePass(Registry);
   initializeDeadMachineInstructionElimPass(Registry);
   initializeDebugifyMachineModulePass(Registry);
+  initializeDesugarVariadicsPass(Registry);
   initializeDetectDeadLanesPass(Registry);
   initializeDwarfEHPrepareLegacyPassPass(Registry);
   initializeEarlyIfConverterPass(Registry);
@@ -42,7 +43,6 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeExpandLargeFpConvertLegacyPassPass(Registry);
   initializeExpandMemCmpPassPass(Registry);
   initializeExpandPostRAPass(Registry);
-  initializeExpandVAIntrinsicsPass(Registry);
   initializeFEntryInserterPass(Registry);
   initializeFinalizeISelPass(Registry);
   initializeFinalizeMachineBundlesPass(Registry);
