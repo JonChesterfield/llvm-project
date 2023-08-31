@@ -293,10 +293,10 @@ static LIBC_INLINE void invoke_rpc(cpp::function<void(Buffer *, uint32_t)> fn,
 /// The port provides the interface to communicate between the multiple
 /// processes. A port is conceptually an index into the memory provided by the
 /// underlying process that is guarded by a lock bit.
-template <bool T, typename S> struct Port {
-  LIBC_INLINE Port(Process<T, S> &process, uint64_t lane_mask, uint32_t index,
+template <bool T, typename S, Process<T, S> &process> struct Port {
+  LIBC_INLINE Port(uint64_t lane_mask, uint32_t index,
                    uint32_t out)
-      : process(process), lane_mask(lane_mask), index(index), out(out),
+      : lane_mask(lane_mask), index(index), out(out),
         receive(false), owns_buffer(true) {}
   LIBC_INLINE ~Port() = default;
 
@@ -334,7 +334,6 @@ public:
   }
 
 private:
-  Process<T, S> &process;
   uint64_t lane_mask;
   uint32_t index;
   uint32_t out;
