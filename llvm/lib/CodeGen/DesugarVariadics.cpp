@@ -35,8 +35,6 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
-#include <cstdio>
-
 #define DEBUG_TYPE "desugar-variadics"
 
 using namespace llvm;
@@ -71,6 +69,7 @@ public:
     Value *Incr = Builder.CreateConstInBoundsGEP1_32(
         Type::getInt8Ty(Ctx), vaListValue, DataAlignMinusOne);
 
+    // ideally would be ptrmask, try to work out why that wasn't working
     Value *Mask = ConstantInt::get(IntPtrTy, ~(DataAlignMinusOne));
     Value *vaListAligned = Builder.CreateIntToPtr(
         Builder.CreateAnd(Builder.CreatePtrToInt(Incr, IntPtrTy), Mask),
@@ -99,6 +98,7 @@ public:
     IRBuilder<> Builder(Inst);
     Value *dst = Inst->getDest();
     Value *src = Inst->getSrc();
+    // todo: memcpy?
     Value *ld = Builder.CreateLoad(src->getType(), src, "vacopy");
     Builder.CreateStore(ld, dst);
     Inst->eraseFromParent();
@@ -141,9 +141,11 @@ public:
   bool runOnModule(Module &M) override {
     bool Apply = ApplicableToAllDefault | ApplyToAllOverride;
     bool Changed = false;
-    for (Function &F : llvm::make_early_inc_range(M))
+    for (Function &F : llvm::make_early_inc_range(M)) {
+      if (F.getIntrinsicID() != Intrinsic::not_intrinsic) continue;
       if (Apply || canTransformFunctionInIsolation(F))
         Changed |= runOnFunction(F);
+    }
     return Changed;
   }
 
@@ -159,11 +161,16 @@ public:
     return false;
   }
 
-  static void ExpandCall(Module &M, CallBase *CB, Function *NF) {
+  static void ExpandCall(Module &M, CallBase *CB, Function &OldFunction, Function *NF) {
+    auto &Ctx = M.getContext();
     const DataLayout &DL = M.getDataLayout();
 
-    FunctionType *FuncType = CB->getFunctionType();
-    auto &Ctx = CB->getContext();
+    FunctionType *FuncType = OldFunction.getFunctionType();
+    if (CB->getFunctionType() != FuncType) {
+      // This seems interesting. Call instructions have a function type, but the IR verifier
+      // doesn't place any obligations on it matching the corresponding function global.
+      // Not a variadic feature, just functions in general.
+    }
     unsigned NumArgs = FuncType->getNumParams();
 
     SmallVector<Value *> Args;
@@ -309,7 +316,7 @@ public:
     // Declared the new function, can now create calls to it
     for (User *U : llvm::make_early_inc_range(F.users()))
       if (CallBase *CB = dyn_cast<CallBase>(U))
-        ExpandCall(M, CB, NF);
+        ExpandCall(M, CB, F, NF);
 
     // If it's a definition, move the implementation across
     if (!F.isDeclaration()) {
@@ -334,11 +341,9 @@ public:
     for (auto [KindID, Node] : MDs)
       NF->addMetadata(KindID, *Node);
 
-    // DAE bitcasts it, todo: check block addresses
-    // This fails to update call instructions, unfortunately
-    // It may therefore also fail to update globals
-    F.replaceAllUsesWith(NF);
-
+    // RAUW including block addresses, as in dead argument elimination
+    F.replaceAllUsesWith(ConstantExpr::getBitCast(NF, F.getType()));
+    NF->removeDeadConstantUsers();
     F.eraseFromParent();
   }
 };
