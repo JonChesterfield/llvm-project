@@ -53,6 +53,11 @@ public:
   DesugarVariadics(bool A = false)
       : ModulePass(ID), ApplicableToAllDefault(A) {}
 
+  static Type* valistType(LLVMContext & Ctx) {
+    // This should probably have an addrspace on it
+    return Type::getInt8PtrTy(Ctx);
+  }
+  
   static void ExpandVAArg(VAArgInst *Inst, const DataLayout &DL) {
     auto &Ctx = Inst->getContext();
 
@@ -60,7 +65,7 @@ public:
     IRBuilder<> Builder(Inst);
 
     Value *vaListPointer = Inst->getPointerOperand();
-    Value *vaListValue = Builder.CreateLoad(Type::getInt8PtrTy(Ctx),
+    Value *vaListValue = Builder.CreateLoad(valistType(Ctx),
                                             vaListPointer, "arglist_current");
 
     Align DataAlign = DL.getABITypeAlign(Inst->getType());
@@ -88,29 +93,45 @@ public:
     Inst->eraseFromParent();
   }
 
-  static void ExpandVAStart(VAStartInst *Inst, Argument *StructPtr) {
+  static void ExpandVAStart(Module&M, VAStartInst *Inst, Argument *StructPtr) {
+    auto &Ctx = M.getContext();
     IRBuilder<> Builder(Inst);
-    Builder.CreateStore(StructPtr, Inst->getArgList());
+    // Type * T = valistType(Ctx);
+    // vacopy doesn't have addrspace overloads, may need casts here
+    Function *  Decl = Intrinsic::getDeclaration(&M, Intrinsic::vacopy);
+    Builder.CreateCall(Decl, {Inst->getArgList(), StructPtr});
+    // Builder.CreateStore(StructPtr, Inst->getArgList());
     Inst->eraseFromParent();
   }
 
-  static void ExpandVACopy(VACopyInst *Inst) {
+  static void ExpandVACopy(Module &M, VACopyInst *Inst) {
+    // TODO: Check this does the right thing for x64
+    const DataLayout &DL = M.getDataLayout();
     IRBuilder<> Builder(Inst);
     Value *dst = Inst->getDest();
     Value *src = Inst->getSrc();
-    // todo: memcpy?
-    Value *ld = Builder.CreateLoad(src->getType(), src, "vacopy");
-    Builder.CreateStore(ld, dst);
+    uint64_t size =  DL.getTypeAllocSize(src->getType());
+    Builder.CreateMemCpy(dst, Align(1), src, Align(1), size);
     Inst->eraseFromParent();
   }
 
-  static void ExpandVAEnd(VAEndInst *Inst) { Inst->eraseFromParent(); }
+  static void ExpandVAEnd(VAEndInst *Inst) {
+    // No target in tree does anything other than discard vaend instructions
+    Inst->eraseFromParent();
+  }
 
-  static bool runOnFunction(Function &F) {
-    Module &M = *F.getParent();
+  static bool runOnFunction(Function *F) {
+    Module &M = *F->getParent();
     const DataLayout &DL = M.getDataLayout();
     bool Changed = false;
-    for (BasicBlock &BB : F) {
+
+    if (F->isVarArg()) {
+      F = ExpandVariadicFunction(M, F);
+      Changed = true;
+    }
+
+    
+    for (BasicBlock &BB : *F) {
       for (Instruction &I : llvm::make_early_inc_range(BB)) {
         if (VAArgInst *II = dyn_cast<VAArgInst>(&I)) {
           Changed = true;
@@ -124,16 +145,12 @@ public:
         }
         if (VACopyInst *II = dyn_cast<VACopyInst>(&I)) {
           Changed = true;
-          ExpandVACopy(II);
+          ExpandVACopy(M, II);
           continue;
         }
       }
     }
 
-    if (F.isVarArg()) {
-      ExpandVariadicFunction(M, F);
-      Changed = true;
-    }
 
     return Changed;
   }
@@ -144,7 +161,7 @@ public:
     for (Function &F : llvm::make_early_inc_range(M)) {
       if (F.getIntrinsicID() != Intrinsic::not_intrinsic) continue;
       if (Apply || canTransformFunctionInIsolation(F))
-        Changed |= runOnFunction(F);
+        Changed |= runOnFunction(&F);
     }
     return Changed;
   }
@@ -155,17 +172,21 @@ public:
       return false;
     }
 
+    if (!F.isDefinitionExact()) {
+      return false;
+    }
+
     // TODO: function is plumbing for extending this lowering pass for
     // optimisation on targets which use different variadic calling
     // conventions. Escape analysis on va_list values.
     return false;
   }
 
-  static void ExpandCall(Module &M, CallBase *CB, Function &OldFunction, Function *NF) {
+  static void ExpandCall(Module &M, CallBase *CB, Function *OldFunction, Function *NF) {
     auto &Ctx = M.getContext();
     const DataLayout &DL = M.getDataLayout();
 
-    FunctionType *FuncType = OldFunction.getFunctionType();
+    FunctionType *FuncType = OldFunction->getFunctionType();
     if (CB->getFunctionType() != FuncType) {
       // This seems interesting. Call instructions have a function type, but the IR verifier
       // doesn't place any obligations on it matching the corresponding function global.
@@ -179,6 +200,10 @@ public:
     SmallVector<std::pair<Value *, uint64_t>> Varargs;
     SmallVector<Type *> LocalVarTypes;
 
+    const bool ExplicitPadding = true; // May want to rely on the struct default instead
+
+    // Goal here is to create a struct that a va_list instance can be pointed at
+    
     Align MaxFieldAlign(1);
     uint64_t CurrentOffset = 0;
     for (unsigned I = FuncType->getNumParams(), E = CB->arg_size(); I < E;
@@ -192,13 +217,15 @@ public:
       Type *ArgType = ArgVal->getType();
       Align DataAlign = DL.getABITypeAlign(ArgType);
       MaxFieldAlign = std::max(MaxFieldAlign, DataAlign);
-      uint64_t DataAlignV = DataAlign.value();
 
+      if (ExplicitPadding) {  
+      uint64_t DataAlignV = DataAlign.value();
       if (uint64_t Rem = CurrentOffset % DataAlignV) {
         uint64_t Padding = DataAlignV - Rem;
         Type *ATy = ArrayType::get(Type::getInt8Ty(Ctx), Padding);
         LocalVarTypes.push_back(ATy);
         CurrentOffset += Padding;
+      }
       }
 
       Varargs.push_back({ArgVal, LocalVarTypes.size()});
@@ -233,8 +260,9 @@ public:
                           r); // alignment info could be better
     }
 
+    // This needs to be pushing back something that adequately approximates a va_list
     Args.push_back(Builder.CreatePointerBitCastOrAddrSpaceCast(
-        alloced, Type::getInt8PtrTy(Ctx)));
+                                                               alloced, valistType(Ctx)));
 
     // Attributes excluding any on the vararg arguments
     AttributeList PAL = CB->getAttributes();
@@ -253,17 +281,25 @@ public:
     if (InvokeInst *II = dyn_cast<InvokeInst>(CB)) {
       NewCB = InvokeInst::Create(NF, II->getNormalDest(), II->getUnwindDest(),
                                  Args, OpBundles, "", CB);
-    } else {
+    } else if (CallBrInst *CBI = dyn_cast<CallBrInst>(CB)) {
+      NewCB =
+        CallBrInst::Create(NF->getFunctionType(), NF, CBI->getDefaultDest(),
+                           CBI->getIndirectDests(), Args, OpBundles);
+
+    } else  {
+      assert(isa<CallInst>(CB));
       NewCB = CallInst::Create(NF, Args, OpBundles, "", CB);
       cast<CallInst>(NewCB)->setTailCallKind(
           cast<CallInst>(CB)->getTailCallKind());
     }
-
+    // instcombine sets calling conv and attributes on the cast instance, curious
     NewCB->setAttributes(PAL);
     NewCB->takeName(CB);
     NewCB->setCallingConv(CB->getCallingConv());
-    NewCB->copyMetadata(*CB, {LLVMContext::MD_prof, LLVMContext::MD_dbg});
+    NewCB->copyMetadata(*CB);
 
+    // NewCaller->setDebugLoc(Call.getDebugLoc()); ?
+    
     if (!CB->use_empty())
       CB->replaceAllUsesWith(NewCB);
     CB->eraseFromParent();
@@ -283,27 +319,32 @@ public:
     }
   }
 
-  static void ExpandVariadicFunction(Module &M, Function &F) {
+  static Function * ExpandVariadicFunction(Module &M, Function *F) {
     auto &Ctx = M.getContext();
     const DataLayout &DL = M.getDataLayout();
 
     IRBuilder<> Builder(Ctx);
 
-    FunctionType *FTy = F.getFunctionType();
+    FunctionType *FTy = F->getFunctionType();
 
+    // Create a function type equal to the initial one, but with ... replaced
+    // with a va_list
     SmallVector<Type *> ArgTypes(FTy->param_begin(), FTy->param_end());
-    ArgTypes.push_back(Type::getInt8PtrTy(Ctx));
-
+    ArgTypes.push_back(valistType(Ctx));
     FunctionType *NFTy =
         FunctionType::get(FTy->getReturnType(), ArgTypes, /*IsVarArgs*/ false);
 
-    Function *NF = Function::Create(NFTy, F.getLinkage(), F.getAddressSpace());
+    // Implemented the ABI lowering version at present
+    // Plan is to have a different which replaces the original with a call to the new
+    // one and a va_start
+    
+    Function *NF = Function::Create(NFTy, F->getLinkage(), F->getAddressSpace());
 
     // Note - same attribute handling as DeadArgumentElimination
-    NF->copyAttributesFrom(&F);
-    NF->setComdat(F.getComdat());
-    F.getParent()->getFunctionList().insert(F.getIterator(), NF);
-    NF->takeName(&F);
+    NF->copyAttributesFrom(F);
+    NF->setComdat(F->getComdat());
+    F->getParent()->getFunctionList().insert(F->getIterator(), NF);
+    NF->takeName(F);
 
     AttrBuilder ParamAttrs(Ctx);
     ParamAttrs.addAttribute(Attribute::NoAlias);
@@ -313,38 +354,43 @@ public:
     Attrs = Attrs.addParamAttributes(Ctx, NFTy->getNumParams() - 1, ParamAttrs);
     NF->setAttributes(Attrs);
 
+    SmallVector<std::pair<unsigned, MDNode *>, 1> MDs;
+    F->getAllMetadata(MDs);
+    for (auto [KindID, Node] : MDs)
+      NF->addMetadata(KindID, *Node);
+
+    
     // Declared the new function, can now create calls to it
-    for (User *U : llvm::make_early_inc_range(F.users()))
+    for (User *U : llvm::make_early_inc_range(F->users()))
       if (CallBase *CB = dyn_cast<CallBase>(U))
         ExpandCall(M, CB, F, NF);
 
     // If it's a definition, move the implementation across
-    if (!F.isDeclaration()) {
-      NF->splice(NF->begin(), &F);
+    if (!F->isDeclaration()) {
+      NF->splice(NF->begin(), F);
 
       auto NewArg = NF->arg_begin();
-      for (Argument &Arg : F.args()) {
+      for (Argument &Arg : F->args()) {
         Arg.replaceAllUsesWith(NewArg);
         NewArg->takeName(&Arg);
         ++NewArg;
       }
       NewArg->setName("varargs");
 
+      // Replace vastart with a vacopy from the last argument
       for (BasicBlock &BB : *NF)
         for (Instruction &I : llvm::make_early_inc_range(BB))
           if (VAStartInst *II = dyn_cast<VAStartInst>(&I))
-            ExpandVAStart(II, NewArg);
+            ExpandVAStart(M, II, NewArg);
     }
 
-    SmallVector<std::pair<unsigned, MDNode *>, 1> MDs;
-    F.getAllMetadata(MDs);
-    for (auto [KindID, Node] : MDs)
-      NF->addMetadata(KindID, *Node);
 
     // RAUW including block addresses, as in dead argument elimination
-    F.replaceAllUsesWith(ConstantExpr::getBitCast(NF, F.getType()));
+    F->replaceAllUsesWith(ConstantExpr::getBitCast(NF, F->getType()));
     NF->removeDeadConstantUsers();
-    F.eraseFromParent();
+    F->eraseFromParent();
+
+    return NF;
   }
 };
 } // namespace
