@@ -528,19 +528,28 @@ struct AMDGPUSignalTy {
       hsa_signal_value_t Got = 1;
       Got = hsa_signal_wait_scacquire(HSASignal, HSA_SIGNAL_CONDITION_EQ, 0,
                                       ActiveTimeout, HSA_WAIT_STATE_ACTIVE);
-      if (Got == 0)
+      if (Got == 0) {
+        fprintf(stderr, "signal wait returned immediately\n");
         return Plugin::success();
+      }
+      fprintf(stderr, "signal wait wanted 0, got %lu, keep going\n", Got);
     }
 
     // If there is an RPC device attached to this stream we run it as a server.
     uint64_t Timeout = RPCServer ? 8192 : UINT64_MAX;
     auto WaitState = RPCServer ? HSA_WAIT_STATE_ACTIVE : HSA_WAIT_STATE_BLOCKED;
-    while (hsa_signal_wait_scacquire(HSASignal, HSA_SIGNAL_CONDITION_EQ, 0,
+    while (hsa_signal_value_t Got =
+           hsa_signal_wait_scacquire(HSASignal, HSA_SIGNAL_CONDITION_EQ, 0,
                                      Timeout, WaitState) != 0) {
+
+      fprintf(stderr, "signal wait wanted 0, loop got %lu, keep going\n", Got);
+      
       if (RPCServer && Device)
         if (auto Err = RPCServer->runServer(*Device))
           return Err;
     }
+
+    fprintf(stderr, "signal wait claiming success\n");
     return Plugin::success();
   }
 
@@ -1356,12 +1365,15 @@ public:
     hsa_status_t Status;
     if (InputSignal && InputSignal->load()) {
       hsa_signal_t InputSignalRaw = InputSignal->get();
+      fprintf(stderr, "Calling hsa_amd_async A\n");
       Status =
           hsa_amd_memory_async_copy(Dst, DstAgent, Src, SrcAgent, CopySize, 1,
                                     &InputSignalRaw, OutputSignal->get());
-    } else
+    } else {
+      fprintf(stderr, "Calling hsa_amd_async A\n");
       Status = hsa_amd_memory_async_copy(Dst, DstAgent, Src, SrcAgent, CopySize,
                                          0, nullptr, OutputSignal->get());
+    }
 
     return Plugin::check(Status, "Error in D2D hsa_amd_memory_async_copy: %s");
   }
@@ -1371,17 +1383,18 @@ public:
   /// intermediate buffers).
   Error synchronize() {
     std::lock_guard<std::mutex> Lock(Mutex);
-
     // No need to synchronize anything.
-    if (size() == 0)
+    if (size() == 0) {
+      fprintf(stderr, "Called synchronize nop\n");
       return Plugin::success();
-
+    }
     // Wait until all previous operations on the stream have completed.
     if (auto Err = Slots[last()].Signal->wait(StreamBusyWaitMicroseconds,
                                               RPCServer, &Device))
       return Err;
 
     // Reset the stream and perform all pending post actions.
+    fprintf(stderr, "Called synchronize done\n");
     return complete();
   }
 
@@ -2296,8 +2309,46 @@ struct AMDGPUDeviceTy : public GenericDeviceTy, AMDGenericDeviceTy {
     if (Size <= 0)
       return Plugin::success();
 
+
+    // DIY it
+    const bool hack = true;
+    if (hack)  {
+    fprintf(stderr, "Do memcpy D2D async with immediate wait\n");
+    AMDGPUSignalTy Signal;
+    if (auto Err = Signal.init()) {
+      fprintf(stderr, "signal init failed\n");
+      return Err;
+    }
+
+    hsa_status_t Status =
+      hsa_amd_memory_async_copy(DstPtr, DstDevice.getAgent(),
+                                SrcPtr, getAgent(),
+                                Size, 0, nullptr, Signal.get());
+    if (Status) {
+      fprintf(stderr, "copy returned %u\n", Status);
+    } else {
+      fprintf(stderr, "copy returned success\n");
+    }
+      
+    if (auto Err =
+        Plugin::check(Status, "Error in hsa_amd_memory_async_copy: %s"))
+      return Err;
+
+    fprintf(stderr, "Calling signal.wait\n");
+    if (auto Err = Signal.wait(getStreamBusyWaitMicroseconds()))
+      return Err;
+    
+    if (auto Err = Signal.deinit())
+      return Err;
+
+    fprintf(stderr, "copy done\n");
+    return Plugin::success();
+    } else {
+    fprintf(stderr, "Pushing memcpy D2D async\n");
+    
     return Stream->pushMemoryCopyD2DAsync(DstPtr, DstDevice.getAgent(), SrcPtr,
                                           getAgent(), (uint64_t)Size);
+    }
   }
 
   /// Initialize the async info for interoperability purposes.

@@ -13,7 +13,7 @@
 const int magic_num = 7;
 
 int main(int argc, char *argv[]) {
-  const int N = 128;
+  const int N = 64;
   const int num_devices = omp_get_num_devices();
 
   // No target device, just return
@@ -21,9 +21,15 @@ int main(int argc, char *argv[]) {
     printf("PASS\n");
     return 0;
   }
+  
 
+  
   const int src_device = 0;
   int dst_device = num_devices - 1;
+
+    fprintf(stderr, "num %d\n", num_devices);
+  fprintf(stderr, "src %d\n", src_device);
+  fprintf(stderr, "dst %d\n", dst_device);
 
   int length = N * sizeof(int);
   int *src_ptr = omp_target_alloc(length, src_device);
@@ -38,23 +44,52 @@ int main(int argc, char *argv[]) {
     src_ptr[i] = magic_num;
   }
 
+#pragma omp target teams distribute parallel for device(dst_device)            \
+    is_device_ptr(dst_ptr)
+  for (int i = 0; i < N; ++i) {
+    dst_ptr[i] = 0xcafebabe;
+  }
+
+  
+  
+  int *buffer = malloc(length);
+  for (int i = 0; i < N; ++i) {
+    buffer[i] = 0;
+  }
+  
+  assert(buffer && "failed to allocate host buffer");
+
+
+#pragma omp target teams distribute parallel for device(src_device)     \
+    map(from : buffer[0 : N]) is_device_ptr(src_ptr)
+  for (int i = 0; i < N; ++i) {
+    buffer[i] = src_ptr[i];
+  }
+
+  for (int i = 0; i < N; ++i) {
+    fprintf(stderr,"buffer[%d] = %u, wanted %d\n", i, (unsigned)buffer[i], magic_num);
+  }
+
+  
   int rc =
       omp_target_memcpy(dst_ptr, src_ptr, length, 0, 0, dst_device, src_device);
 
   assert(rc == 0 && "error in omp_target_memcpy");
 
-  int *buffer = malloc(length);
-
-  assert(buffer && "failed to allocate host buffer");
 
 #pragma omp target teams distribute parallel for device(dst_device)            \
     map(from : buffer[0 : N]) is_device_ptr(dst_ptr)
   for (int i = 0; i < N; ++i) {
-    buffer[i] = dst_ptr[i] + magic_num;
+    buffer[i] = dst_ptr[i] ;//+ magic_num;
   }
 
-  for (int i = 0; i < N; ++i)
+  for (int i = 0; i < N; ++i) {
+    fprintf(stderr, "buffer[%d] = 0x%x, wanted %d\n", i, (unsigned)buffer[i], 2*magic_num);
+  }
+
+  for (int i = 0; i < N; ++i) {
     assert(buffer[i] == 2 * magic_num);
+  }
 
   printf("PASS\n");
 
