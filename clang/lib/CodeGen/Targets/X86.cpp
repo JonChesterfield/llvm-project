@@ -2999,7 +2999,7 @@ static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
 Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
   // hacky
-  return EmitVAArgInstr(CGF, VAListAddr, Ty, ABIArgInfo::getDirect());
+  // return EmitVAArgInstr(CGF, VAListAddr, Ty, ABIArgInfo::getDirect());
 
   // Assume that va_list type is correct; should be pointer to LLVM type:
   // struct {
