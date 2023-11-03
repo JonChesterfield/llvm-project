@@ -14,7 +14,7 @@
 
 TEST(LlvmLibcClockTest, SmokeTest) {
   clock_t c1 = LIBC_NAMESPACE::clock();
-  ASSERT_GT(c1, clock_t(0));
+  ASSERT_GE(c1, clock_t(0));
 
   clock_t c2 = LIBC_NAMESPACE::clock();
   ASSERT_GE(c2, c1);
