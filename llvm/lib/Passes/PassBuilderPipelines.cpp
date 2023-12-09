@@ -136,6 +136,9 @@
 #include "llvm/Transforms/Vectorize/SLPVectorizer.h"
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
 
+// TODO: Seems likely this needs to be moved out of codegen
+// and under transforms, maybe IPO/ExpandVA
+#include "llvm/CodeGen/ExpandVAIntrinsics.h"
 using namespace llvm;
 
 static cl::opt<InliningAdvisorMode> UseInlineAdvisor(
@@ -1022,6 +1025,13 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
   if (Phase == ThinOrFullLTOPhase::ThinLTOPostLink && !LoadSampleProfile)
     MPM.addPass(PGOIndirectCallPromotion(true /* InLTO */, HasSampleProfile));
 
+  // TODO: This would make more sense as a function pass, iff function passes
+  // can reasonably change functions other than the one under focus.
+  // Codegen is probably the wrong place for this
+  if (true) {
+    // disabling for now - the composition across translation units is looking suspect
+    MPM.addPass(ExpandVAIntrinsicsPass());
+  }
   // Create an early function pass manager to cleanup the output of the
   // frontend. Not necessary with LTO post link pipelines since the pre link
   // pipeline already cleaned up the frontend output.

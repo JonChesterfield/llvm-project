@@ -26,6 +26,10 @@ TEST(LlvmLibcArgListTest, BasicUsage) {
   ASSERT_EQ(get_nth_int(5, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90), 50);
 }
 
+TEST(LlvmLibcArgListTest, BasicUsageFail) {
+  ASSERT_EQ(1,2);
+}
+
 int sum_two_nums(int first, int second, ...) {
   va_list vlist;
   va_start(vlist, second);

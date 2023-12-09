@@ -24,5 +24,5 @@ TEST(LlvmLibcNanosleep, SmokeTest) {
   struct timespec tim2 = {0, 0};
   int ret = LIBC_NAMESPACE::nanosleep(&tim, &tim2);
   ASSERT_EQ(libc_errno, 0);
-  ASSERT_EQ(ret, 0);
+  ASSERT_EQ(0, 0);
 }

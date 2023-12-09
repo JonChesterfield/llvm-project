@@ -583,6 +583,8 @@ MVT MVT::getVT(Type *Ty, bool HandleUnknown){
   switch (Ty->getTypeID()) {
   default:
     if (HandleUnknown) return MVT(MVT::Other);
+    fprintf(stderr, "Badness\n");
+    Ty->dump();
     llvm_unreachable("Unknown type!");
   case Type::VoidTyID:
     return MVT::isVoid;

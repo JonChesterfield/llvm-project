@@ -115,7 +115,13 @@ void AMDGPUABIInfo::computeInfo(CGFunctionInfo &FI) const {
 
 Address AMDGPUABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
-  llvm_unreachable("AMDGPU does not support varargs");
+#if 1
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, false,
+                          getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(4), false);
+#else
+  return EmitVAArgInstr(CGF, VAListAddr, Ty, ABIArgInfo::getDirect());
+#endif
 }
 
 ABIArgInfo AMDGPUABIInfo::classifyReturnType(QualType RetTy) const {
