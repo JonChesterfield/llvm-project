@@ -43,6 +43,7 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeExpandLargeFpConvertLegacyPassPass(Registry);
   initializeExpandMemCmpPassPass(Registry);
   initializeExpandPostRAPass(Registry);
+  initializeExpandVAIntrinsicsPass(Registry);
   initializeFEntryInserterPass(Registry);
   initializeFinalizeISelPass(Registry);
   initializeFinalizeMachineBundlesPass(Registry);

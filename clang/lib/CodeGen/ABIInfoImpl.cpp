@@ -153,6 +153,22 @@ QualType CodeGen::useFirstFieldIfTransparentUnion(QualType Ty) {
 llvm::Value *CodeGen::emitRoundPointerUpToAlignment(CodeGenFunction &CGF,
                                                     llvm::Value *Ptr,
                                                     CharUnits Align) {
+  // ptrmask is the right thing and falls over on addrspace cast, reverting
+  // for now. weirdly matt patched this originally.
+  // ptrtoint and ptrmask both fail to constant fold
+  #if 1
+    llvm::Value *PtrAsInt = Ptr;
+  // OverflowArgArea = (OverflowArgArea + Align - 1) & -Align;
+  PtrAsInt = CGF.Builder.CreatePtrToInt(PtrAsInt, CGF.IntPtrTy);
+  PtrAsInt = CGF.Builder.CreateAdd(PtrAsInt,
+        llvm::ConstantInt::get(CGF.IntPtrTy, Align.getQuantity() - 1));
+  PtrAsInt = CGF.Builder.CreateAnd(PtrAsInt,
+           llvm::ConstantInt::get(CGF.IntPtrTy, -Align.getQuantity()));
+  PtrAsInt = CGF.Builder.CreateIntToPtr(PtrAsInt,
+                                        Ptr->getType(),
+                                        Ptr->getName() + ".aligned");
+  return PtrAsInt;
+  #else
   // OverflowArgArea = (OverflowArgArea + Align - 1) & -Align;
   llvm::Value *RoundUp = CGF.Builder.CreateConstInBoundsGEP1_32(
       CGF.Builder.getInt8Ty(), Ptr, Align.getQuantity() - 1);
@@ -160,6 +176,7 @@ llvm::Value *CodeGen::emitRoundPointerUpToAlignment(CodeGenFunction &CGF,
       llvm::Intrinsic::ptrmask, {CGF.AllocaInt8PtrTy, CGF.IntPtrTy},
       {RoundUp, llvm::ConstantInt::get(CGF.IntPtrTy, -Align.getQuantity())},
       nullptr, Ptr->getName() + ".aligned");
+  #endif
 }
 
 Address
