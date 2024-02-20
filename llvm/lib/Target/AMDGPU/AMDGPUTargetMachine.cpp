@@ -34,6 +34,7 @@
 #include "TargetInfo/AMDGPUTargetInfo.h"
 #include "Utils/AMDGPUBaseInfo.h"
 #include "llvm/Analysis/CGSCCPassManager.h"
+#include "llvm/Transforms/IPO/ExpandVariadics.h"
 #include "llvm/CodeGen/GlobalISel/CSEInfo.h"
 #include "llvm/CodeGen/GlobalISel/IRTranslator.h"
 #include "llvm/CodeGen/GlobalISel/InstructionSelect.h"
@@ -650,6 +651,10 @@ void AMDGPUTargetMachine::registerPassBuilderCallbacks(
           PM.addPass(AMDGPUCtorDtorLoweringPass());
           return true;
         }
+        if (PassName == "expand-variadics") {
+          PM.addPass(ExpandVariadicsPass());
+          return true;
+        }
         return false;
       });
   PB.registerPipelineParsingCallback(
@@ -1045,6 +1050,9 @@ void AMDGPUPassConfig::addIRPasses() {
   if (TM.getOptLevel() > CodeGenOptLevel::None)
     addPass(createAMDGPUAttributorLegacyPass());
 
+  // TODO: Where
+  addPass(createExpandVariadicsPass(true));
+  
   if (TM.getOptLevel() > CodeGenOptLevel::None)
     addPass(createInferAddressSpacesPass());
 

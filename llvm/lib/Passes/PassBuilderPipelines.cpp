@@ -48,6 +48,7 @@
 #include "llvm/Transforms/IPO/DeadArgumentElimination.h"
 #include "llvm/Transforms/IPO/ElimAvailExtern.h"
 #include "llvm/Transforms/IPO/EmbedBitcodePass.h"
+#include "llvm/Transforms/IPO/ExpandVariadics.h"
 #include "llvm/Transforms/IPO/ForceFunctionAttrs.h"
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
@@ -1038,6 +1039,13 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
   if (Phase == ThinOrFullLTOPhase::ThinLTOPostLink && !LoadSampleProfile)
     MPM.addPass(PGOIndirectCallPromotion(true /* InLTO */, HasSampleProfile));
 
+  // TODO: This would make more sense as a function pass, iff function passes
+  // can reasonably change functions other than the one under focus.
+  // Codegen is probably the wrong place for this
+  if (false) {
+    // disabling for now - the composition across translation units is looking suspect
+    MPM.addPass(ExpandVariadicsPass());
+  }
   // Create an early function pass manager to cleanup the output of the
   // frontend. Not necessary with LTO post link pipelines since the pre link
   // pipeline already cleaned up the frontend output.

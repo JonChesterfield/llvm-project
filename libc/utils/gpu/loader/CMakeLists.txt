@@ -5,10 +5,16 @@ target_include_directories(gpu_loader PUBLIC
   ${LIBC_SOURCE_DIR}
 )
 
-find_package(hsa-runtime64 QUIET 1.2.0 HINTS ${CMAKE_INSTALL_PREFIX} PATHS /opt/rocm)
+# /usr/lib/x86_64-linux-gnu/cmake/hsa-runtime64 works, no " or ;
+# probably need to patch llvm/runtimes/CMakeLists.txt to pass down to
+# the recursive build, I think that's why the top level setting is being ignored
+# CMAKE_PREFIX_PATH that is
+find_package(hsa-runtime64 QUIET 1.2.0 HINTS ${CMAKE_INSTALL_PREFIX} PATHS /opt/rocm /usr/lib/x86_64-linux-gnu/cmake/hsa-runtime64)
 if(hsa-runtime64_FOUND)
   add_subdirectory(amdgpu)
+  message(STATUS "JCHSA: Found it")
 else()
+  message(STATUS "JCHSA: no win")
   message(STATUS "Skipping HSA loader for gpu target, no HSA was detected")
 endif()
 
