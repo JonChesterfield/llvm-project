@@ -1648,16 +1648,16 @@ define void @instructions.va_arg(ptr %v, ...) {
   %ap = alloca ptr
 
   call void @llvm.va_start(ptr %ap)
-  ; CHECK: call void @llvm.va_start(ptr %ap)
+  ; CHECK: call void @llvm.va_start.p0(ptr %ap)
 
   va_arg ptr %ap, i32
   ; CHECK: va_arg ptr %ap, i32
 
   call void @llvm.va_copy(ptr %v, ptr %ap)
-  ; CHECK: call void @llvm.va_copy(ptr %v, ptr %ap)
+  ; CHECK: call void @llvm.va_copy.p0(ptr %v, ptr %ap)
 
   call void @llvm.va_end(ptr %ap)
-  ; CHECK: call void @llvm.va_end(ptr %ap)
+  ; CHECK: call void @llvm.va_end.p0(ptr %ap)
 
   ret void
 }
@@ -2092,12 +2092,12 @@ define float @nofpclass_callsites(float %arg) {
 ; CHECK: attributes #34 = { memory(inaccessiblemem: readwrite) }
 ; CHECK: attributes #35 = { memory(argmem: readwrite, inaccessiblemem: readwrite) }
 ; CHECK: attributes #36 = { nocallback nofree nosync nounwind willreturn memory(none) }
-; CHECK: attributes #37 = { nocallback nofree nosync nounwind willreturn }
-; CHECK: attributes #38 = { nounwind memory(argmem: read) }
-; CHECK: attributes #39 = { nounwind memory(argmem: readwrite) }
-; CHECK: attributes #40 = { nocallback nofree nosync nounwind willreturn memory(read) }
-; CHECK: attributes #41 = { nocallback nounwind }
-; CHECK: attributes #42 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite, inaccessiblemem: readwrite) }
+; CHECK: attributes #37 = { nounwind memory(argmem: read) }
+; CHECK: attributes #38 = { nounwind memory(argmem: readwrite) }
+; CHECK: attributes #39 = { nocallback nofree nosync nounwind willreturn memory(read) }
+; CHECK: attributes #40 = { nocallback nounwind }
+; CHECK: attributes #41 = { nocallback nofree nosync nounwind willreturn memory(argmem: readwrite, inaccessiblemem: readwrite) }
+; CHECK: attributes #42 = { nocallback nofree nosync nounwind willreturn }
 ; CHECK: attributes #43 = { memory(write) }
 ; CHECK: attributes #44 = { speculatable }
 ; CHECK: attributes #45 = { strictfp }
