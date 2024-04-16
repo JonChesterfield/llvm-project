@@ -1066,7 +1066,6 @@ void X86_32ABIInfo::rewriteWithInAlloca(CGFunctionInfo &FI) const {
 
 Address X86_32ABIInfo::EmitVAArg(CodeGenFunction &CGF,
                                  Address VAListAddr, QualType Ty) const {
-
   auto TypeInfo = getContext().getTypeInfoInChars(Ty);
 
   CCState State(*const_cast<CGFunctionInfo *>(CGF.CurFnInfo));
@@ -3014,6 +3013,7 @@ static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
 
 Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
+
   // Assume that va_list type is correct; should be pointer to LLVM type:
   // struct {
   //   i32 gp_offset;

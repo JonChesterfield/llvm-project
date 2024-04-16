@@ -10,6 +10,50 @@
 
 #include "test/UnitTest/Test.h"
 
+#include "src/__support/OSUtil/io.h"
+#include "src/__support/integer_to_string.h"
+using namespace LIBC_NAMESPACE;
+
+namespace {
+
+void nl() { write_to_stderr("\n"); }
+void dump(const char *s) {
+  write_to_stderr(s);
+  nl();
+}
+
+void dump(int32_t s) {
+  auto x = IntegerToString<int32_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(uint32_t s) {
+  auto x = IntegerToString<uint32_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(int64_t s) {
+  auto x = IntegerToString<int64_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(uint64_t s) {
+  auto x = IntegerToString<uint64_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(long int s) {
+  auto x = IntegerToString<long int>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+} // namespace
+
 int get_nth_int(int n, ...) {
   va_list vlist;
   va_start(vlist, n);
@@ -74,7 +118,16 @@ long int check_primitives(int first, ...) {
   count += args.next_var<double>();
   count += args.next_var<double>();
   count += args.next_var<long double>();
+
+  //  dump("before");
+  //  dump(count);
+
+  asm("");
   count += *args.next_var<int *>();
+
+  //    dump("count");
+  //  dump(count);
+
   return count;
 }
 
@@ -91,6 +144,7 @@ TEST(LlvmLibcArgListTest, TestPrimitiveTypes) {
   long double ld = 10.0L;
   long v = 11;
   void *p = &v;
+
   ASSERT_EQ(check_primitives(0, c, s, i, l, ul, ll, ull, f, d, ld, p), 66l);
 }
 
@@ -111,11 +165,35 @@ long int check_struct_type(int first, ...) {
 
   S s = args.next_var<S>();
   int last = args.next_var<int>();
+
+  dump("struct");
+
+  dump((long int)s.c);
+  dump((long int)s.s);
+  dump((long int)s.i);
+  dump((long int)s.l);
+  dump((long int)s.f);
+  dump((long int)s.d);
+
+  dump(last);
+
+  asm("");
+
   return s.c + s.s + s.i + s.l + s.f + s.d + last;
 }
 
 TEST(LlvmLibcArgListTest, TestStructTypes) {
   S s{'\x1', 2, 3, 4l, 5.0f, 6.0};
+
+  dump("struct before");
+
+  dump((long int)s.c);
+  dump((long int)s.s);
+  dump((long int)s.i);
+  dump((long int)s.l);
+  dump((long int)s.f);
+  dump((long int)s.d);
+
   ASSERT_EQ(check_struct_type(0, s, 1), 22l);
 }
 

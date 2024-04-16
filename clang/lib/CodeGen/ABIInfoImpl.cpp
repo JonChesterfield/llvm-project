@@ -154,11 +154,20 @@ llvm::Value *CodeGen::emitRoundPointerUpToAlignment(CodeGenFunction &CGF,
                                                     llvm::Value *Ptr,
                                                     CharUnits Align) {
   // OverflowArgArea = (OverflowArgArea + Align - 1) & -Align;
+  Ptr = CGF.Builder.CreateAddrSpaceCast(Ptr, CGF.AllocaInt8PtrTy,
+                                        Ptr->getName() + ".addrcast");
   llvm::Value *RoundUp = CGF.Builder.CreateConstInBoundsGEP1_32(
       CGF.Builder.getInt8Ty(), Ptr, Align.getQuantity() - 1);
+
+  // ptrmask is sensitive to the bitwidth of the mask
+  unsigned IndexTypeSize =
+      CGF.CGM.getDataLayout().getIndexTypeSizeInBits(RoundUp->getType());
+  llvm::IntegerType *MaskType =
+      llvm::IntegerType::get(CGF.getLLVMContext(), IndexTypeSize);
+
   return CGF.Builder.CreateIntrinsic(
-      llvm::Intrinsic::ptrmask, {CGF.AllocaInt8PtrTy, CGF.IntPtrTy},
-      {RoundUp, llvm::ConstantInt::get(CGF.IntPtrTy, -Align.getQuantity())},
+      llvm::Intrinsic::ptrmask, {CGF.AllocaInt8PtrTy, MaskType},
+      {RoundUp, llvm::ConstantInt::get(MaskType, -Align.getQuantity())},
       nullptr, Ptr->getName() + ".aligned");
 }
 

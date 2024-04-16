@@ -48,14 +48,14 @@ struct implicit_args_t {
 };
 
 /// Print the error code and exit if \p code indicates an error.
-static void handle_error(hsa_status_t code) {
+static void handle_error(hsa_status_t code, int line) {
   if (code == HSA_STATUS_SUCCESS || code == HSA_STATUS_INFO_BREAK)
     return;
 
   const char *desc;
   if (hsa_status_string(code, &desc) != HSA_STATUS_SUCCESS)
     desc = "Unknown error";
-  fprintf(stderr, "%s\n", desc);
+  fprintf(stderr, "L%u: %s\n", line, desc);
   exit(EXIT_FAILURE);
 }
 
@@ -174,7 +174,7 @@ hsa_status_t launch_kernel(hsa_agent_t dev_agent, hsa_executable_t executable,
           if (hsa_status_t err =
                   hsa_amd_memory_pool_allocate(pool, size,
                                                /*flags=*/0, &dev_ptr))
-            handle_error(err);
+            handle_error(err, __LINE__);
           hsa_amd_agents_allow_access(1, &dev_agent, nullptr, dev_ptr);
           buffer->data[0] = reinterpret_cast<uintptr_t>(dev_ptr);
         };
@@ -187,7 +187,7 @@ hsa_status_t launch_kernel(hsa_agent_t dev_agent, hsa_executable_t executable,
         auto free_handler = [](rpc_buffer_t *buffer, void *) {
           if (hsa_status_t err = hsa_amd_memory_pool_free(
                   reinterpret_cast<void *>(buffer->data[0])))
-            handle_error(err);
+            handle_error(err, __LINE__);
         };
         rpc_recv_and_send(port, free_handler, data);
       },
@@ -216,7 +216,7 @@ hsa_status_t launch_kernel(hsa_agent_t dev_agent, hsa_executable_t executable,
   void *args;
   if (hsa_status_t err = hsa_amd_memory_pool_allocate(kernargs_pool, args_size,
                                                       /*flags=*/0, &args))
-    handle_error(err);
+    handle_error(err, __LINE__);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, args);
 
   // Initialie all the arguments (explicit and implicit) to zero, then set the
@@ -267,7 +267,7 @@ hsa_status_t launch_kernel(hsa_agent_t dev_agent, hsa_executable_t executable,
   // Create a signal to indicate when this packet has been completed.
   if (hsa_status_t err =
           hsa_signal_create(1, 0, nullptr, &packet->completion_signal))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Initialize the packet header and set the doorbell signal to begin execution
   // by the HSA runtime.
@@ -294,9 +294,9 @@ hsa_status_t launch_kernel(hsa_agent_t dev_agent, hsa_executable_t executable,
 
   // Destroy the resources acquired to launch the kernel and return.
   if (hsa_status_t err = hsa_amd_memory_pool_free(args))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (hsa_status_t err = hsa_signal_destroy(packet->completion_signal))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   return HSA_STATUS_SUCCESS;
 }
@@ -329,7 +329,7 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
          const LaunchParameters &params) {
   // Initialize the HSA runtime used to communicate with the device.
   if (hsa_status_t err = hsa_init())
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Register a callback when the device encounters a memory fault.
   if (hsa_status_t err = hsa_amd_register_system_event_handler(
@@ -339,42 +339,42 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
             return HSA_STATUS_SUCCESS;
           },
           nullptr))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Obtain a single agent for the device and host to use the HSA memory model.
   hsa_agent_t dev_agent;
   hsa_agent_t host_agent;
   if (hsa_status_t err = get_agent<HSA_DEVICE_TYPE_GPU>(&dev_agent))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (hsa_status_t err = get_agent<HSA_DEVICE_TYPE_CPU>(&host_agent))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Load the code object's ISA information and executable data segments.
   hsa_code_object_t object;
   if (hsa_status_t err = hsa_code_object_deserialize(image, size, "", &object))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   hsa_executable_t executable;
   if (hsa_status_t err = hsa_executable_create_alt(
           HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_ZERO, "",
           &executable))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   if (hsa_status_t err =
           hsa_executable_load_code_object(executable, dev_agent, object, ""))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // No modifications to the executable are allowed  after this point.
   if (hsa_status_t err = hsa_executable_freeze(executable, ""))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Check the validity of the loaded executable. If the agents ISA features do
   // not match the executable's code object it will fail here.
   uint32_t result;
   if (hsa_status_t err = hsa_executable_validate(executable, &result))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (result)
-    handle_error(HSA_STATUS_ERROR);
+    handle_error(HSA_STATUS_ERROR, __LINE__);
 
   // Obtain memory pools to exchange data between the host and the device. The
   // fine-grained pool acts as pinned memory on the host for DMA transfers to
@@ -386,15 +386,15 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
   if (hsa_status_t err =
           get_agent_memory_pool<HSA_AMD_MEMORY_POOL_GLOBAL_FLAG_KERNARG_INIT>(
               host_agent, &kernargs_pool))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (hsa_status_t err =
           get_agent_memory_pool<HSA_AMD_MEMORY_POOL_GLOBAL_FLAG_FINE_GRAINED>(
               host_agent, &finegrained_pool))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (hsa_status_t err =
           get_agent_memory_pool<HSA_AMD_MEMORY_POOL_GLOBAL_FLAG_COARSE_GRAINED>(
               dev_agent, &coarsegrained_pool))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Allocate fine-grained memory on the host to hold the pointer array for the
   // copied argv and allow the GPU agent to access it.
@@ -402,7 +402,7 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
     void *dev_ptr = nullptr;
     if (hsa_status_t err = hsa_amd_memory_pool_allocate(finegrained_pool, size,
                                                         /*flags=*/0, &dev_ptr))
-      handle_error(err);
+      handle_error(err, __LINE__);
     hsa_amd_agents_allow_access(1, &dev_agent, nullptr, dev_ptr);
     return dev_ptr;
   };
@@ -421,14 +421,14 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
   if (hsa_status_t err =
           hsa_amd_memory_pool_allocate(coarsegrained_pool, sizeof(int),
                                        /*flags=*/0, &dev_ret))
-    handle_error(err);
+    handle_error(err, __LINE__);
   hsa_amd_memory_fill(dev_ret, 0, /*count=*/1);
 
   // Allocate finegrained memory for the RPC server and client to share.
   uint32_t wavefront_size = 0;
   if (hsa_status_t err = hsa_agent_get_info(
           dev_agent, HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Set up the RPC server.
   auto tuple = std::make_tuple(dev_agent, finegrained_pool);
@@ -437,7 +437,7 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
     void *dev_ptr = nullptr;
     if (hsa_status_t err = hsa_amd_memory_pool_allocate(finegrained_pool, size,
                                                         /*flags=*/0, &dev_ptr))
-      handle_error(err);
+      handle_error(err, __LINE__);
     hsa_amd_agents_allow_access(1, &dev_agent, nullptr, dev_ptr);
     return dev_ptr;
   };
@@ -459,44 +459,44 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
   hsa_executable_symbol_t rpc_client_sym;
   if (hsa_status_t err = hsa_executable_get_symbol_by_name(
           executable, rpc_client_symbol_name, &dev_agent, &rpc_client_sym))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   void *rpc_client_host;
   if (hsa_status_t err =
           hsa_amd_memory_pool_allocate(finegrained_pool, sizeof(void *),
                                        /*flags=*/0, &rpc_client_host))
-    handle_error(err);
+    handle_error(err, __LINE__);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, rpc_client_host);
 
   void *rpc_client_dev;
   if (hsa_status_t err = hsa_executable_symbol_get_info(
           rpc_client_sym, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
           &rpc_client_dev))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Copy the address of the client buffer from the device to the host.
   if (hsa_status_t err = hsa_memcpy(rpc_client_host, host_agent, rpc_client_dev,
                                     dev_agent, sizeof(void *)))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   void *rpc_client_buffer;
   if (hsa_status_t err =
           hsa_amd_memory_lock(const_cast<void *>(rpc_get_client_buffer(device)),
                               rpc_get_client_size(),
                               /*agents=*/nullptr, 0, &rpc_client_buffer))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Copy the RPC client buffer to the address pointed to by the symbol.
   if (hsa_status_t err =
           hsa_memcpy(*reinterpret_cast<void **>(rpc_client_host), dev_agent,
                      rpc_client_buffer, host_agent, rpc_get_client_size()))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   if (hsa_status_t err = hsa_amd_memory_unlock(
           const_cast<void *>(rpc_get_client_buffer(device))))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (hsa_status_t err = hsa_amd_memory_pool_free(rpc_client_host))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Obtain the GPU's fixed-frequency clock rate and copy it to the GPU.
   // If the clock_freq symbol is missing, no work to do.
@@ -509,9 +509,10 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
     if (hsa_status_t err =
             hsa_amd_memory_pool_allocate(finegrained_pool, sizeof(uint64_t),
                                          /*flags=*/0, &host_clock_freq))
-      handle_error(err);
+      handle_error(err, __LINE__);
     hsa_amd_agents_allow_access(1, &dev_agent, nullptr, host_clock_freq);
 
+#if 0
     if (HSA_STATUS_SUCCESS ==
         hsa_agent_get_info(dev_agent,
                            static_cast<hsa_agent_info_t>(
@@ -522,12 +523,13 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
       if (hsa_status_t err = hsa_executable_symbol_get_info(
               freq_sym, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
               &freq_addr))
-        handle_error(err);
+        handle_error(err, __LINE__);
 
       if (hsa_status_t err = hsa_memcpy(freq_addr, dev_agent, host_clock_freq,
                                         host_agent, sizeof(uint64_t)))
-        handle_error(err);
+        handle_error(err, __LINE__);
     }
+#endif
   }
 
   // Obtain a queue with the minimum (power of two) size, used to send commands
@@ -535,17 +537,18 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
   uint64_t queue_size;
   if (hsa_status_t err = hsa_agent_get_info(
           dev_agent, HSA_AGENT_INFO_QUEUE_MIN_SIZE, &queue_size))
-    handle_error(err);
+    handle_error(err, __LINE__);
   hsa_queue_t *queue = nullptr;
   if (hsa_status_t err =
           hsa_queue_create(dev_agent, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr,
                            nullptr, UINT32_MAX, UINT32_MAX, &queue))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   LaunchParameters single_threaded_params = {1, 1, 1, 1, 1, 1};
   begin_args_t init_args = {argc, dev_argv, dev_envp};
   if (hsa_status_t err = launch_kernel(
           dev_agent, executable, kernargs_pool, coarsegrained_pool, queue,
+<<<<<<< HEAD
           device, single_threaded_params, "_begin.kd", init_args))
     handle_error(err);
 
@@ -554,17 +557,27 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
                                        coarsegrained_pool, queue, device,
                                        params, "_start.kd", args))
     handle_error(err);
+=======
+          single_threaded_params, "_begin.kd", init_args))
+    handle_error(err, __LINE__);
+
+  start_args_t args = {argc, dev_argv, dev_envp, dev_ret};
+  if (hsa_status_t err =
+          launch_kernel(dev_agent, executable, kernargs_pool,
+                        coarsegrained_pool, queue, params, "_start.kd", args))
+    handle_error(err, __LINE__);
+>>>>>>> 16f5755105a2 (Expand variadic functions in IR)
 
   void *host_ret;
   if (hsa_status_t err =
           hsa_amd_memory_pool_allocate(finegrained_pool, sizeof(int),
                                        /*flags=*/0, &host_ret))
-    handle_error(err);
+    handle_error(err, __LINE__);
   hsa_amd_agents_allow_access(1, &dev_agent, nullptr, host_ret);
 
   if (hsa_status_t err =
           hsa_memcpy(host_ret, host_agent, dev_ret, dev_agent, sizeof(int)))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   // Save the return value and perform basic clean-up.
   int ret = *static_cast<int *>(host_ret);
@@ -572,8 +585,13 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
   end_args_t fini_args = {ret};
   if (hsa_status_t err = launch_kernel(
           dev_agent, executable, kernargs_pool, coarsegrained_pool, queue,
+<<<<<<< HEAD
           device, single_threaded_params, "_end.kd", fini_args))
     handle_error(err);
+=======
+          single_threaded_params, "_end.kd", fini_args))
+    handle_error(err, __LINE__);
+>>>>>>> 16f5755105a2 (Expand variadic functions in IR)
 
   if (rpc_status_t err = rpc_server_shutdown(
           device, [](void *ptr, void *) { hsa_amd_memory_pool_free(ptr); },
@@ -582,23 +600,23 @@ int load(int argc, char **argv, char **envp, void *image, size_t size,
 
   // Free the memory allocated for the device.
   if (hsa_status_t err = hsa_amd_memory_pool_free(dev_argv))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (hsa_status_t err = hsa_amd_memory_pool_free(dev_ret))
-    handle_error(err);
+    handle_error(err, __LINE__);
   if (hsa_status_t err = hsa_amd_memory_pool_free(host_ret))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   if (hsa_status_t err = hsa_queue_destroy(queue))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   if (hsa_status_t err = hsa_executable_destroy(executable))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   if (hsa_status_t err = hsa_code_object_destroy(object))
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   if (hsa_status_t err = hsa_shut_down())
-    handle_error(err);
+    handle_error(err, __LINE__);
 
   return ret;
 }

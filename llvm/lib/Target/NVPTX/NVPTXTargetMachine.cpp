@@ -33,6 +33,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/Transforms/IPO/ExpandVariadics.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Vectorize/LoadStoreVectorizer.h"
@@ -227,6 +228,7 @@ void NVPTXTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
 
 void NVPTXTargetMachine::registerPassBuilderCallbacks(
     PassBuilder &PB, bool PopulateClassToPassNames) {
+
 #define GET_PASS_REGISTRY "NVPTXPassRegistry.def"
 #include "llvm/Passes/TargetPassRegistry.inc"
 
@@ -322,6 +324,9 @@ void NVPTXPassConfig::addIRPasses() {
     if (auto *WrapperPass = P.getAnalysisIfAvailable<NVPTXAAWrapperPass>())
       AAR.addAAResult(WrapperPass->getResult());
   }));
+
+  // Should run before anything (else!) that adjusts calling conventions
+  addPass(createExpandVariadicsPass(ExpandVariadicsMode::lowering));
 
   // NVVMReflectPass is added in addEarlyAsPossiblePasses, so hopefully running
   // it here does nothing.  But since we need it for correctness when lowering

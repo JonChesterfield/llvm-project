@@ -6,8 +6,18 @@ target_include_directories(gpu_loader PUBLIC
   ${LIBC_SOURCE_DIR}
 )
 
-find_package(hsa-runtime64 QUIET 1.2.0 HINTS ${CMAKE_INSTALL_PREFIX} PATHS /opt/rocm)
-if(hsa-runtime64_FOUND)
+# This utility needs to be compiled for the host system when cross compiling.
+if(LLVM_RUNTIMES_TARGET OR LIBC_TARGET_TRIPLE)
+  target_compile_options(gpu_loader PUBLIC --target=${LLVM_HOST_TRIPLE})
+  target_link_libraries(gpu_loader PUBLIC "--target=${LLVM_HOST_TRIPLE}")
+endif()
+
+# /usr/lib/x86_64-linux-gnu/cmake/hsa-runtime64 works, no " or ;
+# probably need to patch llvm/runtimes/CMakeLists.txt to pass down to
+# the recursive build, I think that's why the top level setting is being ignored
+# CMAKE_PREFIX_PATH that is
+find_package(hsa-runtime64 QUIET 1.2.0 HINTS ${CMAKE_INSTALL_PREFIX} PATHS /opt/rocm /usr/lib/x86_64-linux-gnu/cmake/hsa-runtime64)
+if(hsa-runtime64_FOUND AND LIBC_TARGET_ARCHITECTURE_IS_AMDGPU)
   add_subdirectory(amdgpu)
 endif()
 

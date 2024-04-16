@@ -242,6 +242,7 @@ function(runtime_default_target)
                            DEPENDS ${ARG_DEPENDS}
                            # Builtins were built separately above
                            CMAKE_ARGS -DCOMPILER_RT_BUILD_BUILTINS=Off
+                                      -DCMAKE_FIND_DEBUG_MODE=ON
                                       -DLLVM_INCLUDE_TESTS=${LLVM_INCLUDE_TESTS}
                                       -DLLVM_DEFAULT_TARGET_TRIPLE=${LLVM_TARGET_TRIPLE}
                                       -DLLVM_ENABLE_PROJECTS_USED=${LLVM_ENABLE_PROJECTS_USED}
@@ -375,6 +376,7 @@ function(runtime_register_target name)
                            DEPENDS ${ARG_DEPENDS}
                            # Builtins were built separately above
                            CMAKE_ARGS -DCOMPILER_RT_BUILD_BUILTINS=OFF
+                                      -DCMAKE_FIND_DEBUG_MODE=ON
                                       -DLLVM_INCLUDE_TESTS=${LLVM_INCLUDE_TESTS}
                                       -DLLVM_ENABLE_PROJECTS_USED=${LLVM_ENABLE_PROJECTS_USED}
                                       -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=${LLVM_ENABLE_PER_TARGET_RUNTIME_DIR}

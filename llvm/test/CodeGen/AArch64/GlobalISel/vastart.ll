@@ -11,3 +11,4 @@ define void @test_va_start(ptr %list, ...) {
   call void @llvm.va_start(ptr %list)
   ret void
 }
+ 
