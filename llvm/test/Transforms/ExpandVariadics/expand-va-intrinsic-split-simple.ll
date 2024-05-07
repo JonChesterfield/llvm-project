@@ -18,6 +18,14 @@ entry:
   ret i32 %0
 }
 
+; CHECK-LABEL: define i32 @variadic_int_double_get_firstz(...) {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    %va_list = alloca ptr, align 4
+; CHECK-NEXT:    call void @llvm.va_start.p0(ptr %va_list)
+; CHECK-NEXT:    %0 = tail call i32 @variadic_int_double_get_firstz.valist(ptr %va_list)
+; CHECK-NEXT:    ret i32 %0
+; CHECK-NEXT:  }
+
 ; CHECK-LABEL: define internal i32 @variadic_int_double_get_firstz.valist(ptr noalias %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:   %va = alloca ptr, align 4
@@ -27,14 +35,6 @@ entry:
 ; CHECK-NEXT:   store ptr %argp.next, ptr %va, align 4
 ; CHECK-NEXT:   %0 = load i32, ptr %argp.cur, align 4
 ; CHECK-NEXT:   ret i32 %0
-; CHECK-NEXT:  }
-
-; CHECK-LABEL: define i32 @variadic_int_double_get_firstz(...) {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    %va_list = alloca ptr, align 4
-; CHECK-NEXT:    call void @llvm.va_start.p0(ptr %va_list)
-; CHECK-NEXT:    %0 = tail call i32 @variadic_int_double_get_firstz.valist(ptr %va_list)
-; CHECK-NEXT:    ret i32 %0
 ; CHECK-NEXT:  }
 
 define double @variadic_int_double_get_secondz(...) {
@@ -50,6 +50,14 @@ entry:
   ret double %0
 }
 
+; CHECK-LABEL: define double @variadic_int_double_get_secondz(...) {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    %va_list = alloca ptr, align 4
+; CHECK-NEXT:    call void @llvm.va_start.p0(ptr %va_list)
+; CHECK-NEXT:    %0 = tail call double @variadic_int_double_get_secondz.valist(ptr %va_list)
+; CHECK-NEXT:    ret double %0
+; CHECK-NEXT:  }
+
 ; CHECK-LABEL: define internal double @variadic_int_double_get_secondz.valist(ptr noalias %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %va = alloca ptr, align 4
@@ -59,14 +67,6 @@ entry:
 ; CHECK-NEXT:    %argp.next2 = getelementptr inbounds i8, ptr %argp.cur, i32 12
 ; CHECK-NEXT:    store ptr %argp.next2, ptr %va, align 4
 ; CHECK-NEXT:    %0 = load double, ptr %argp.next, align 4
-; CHECK-NEXT:    ret double %0
-; CHECK-NEXT:  }
-
-; CHECK-LABEL: define double @variadic_int_double_get_secondz(...) {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    %va_list = alloca ptr, align 4
-; CHECK-NEXT:    call void @llvm.va_start.p0(ptr %va_list)
-; CHECK-NEXT:    %0 = tail call double @variadic_int_double_get_secondz.valist(ptr %va_list)
 ; CHECK-NEXT:    ret double %0
 ; CHECK-NEXT:  }
 

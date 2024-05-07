@@ -30,6 +30,7 @@
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Transforms/IPO/ExpandVariadics.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/LowerAtomicPass.h"
 #include "llvm/Transforms/Utils.h"
@@ -446,6 +447,9 @@ void WebAssemblyPassConfig::addIRPasses() {
   // Lower .llvm.global_dtors into .llvm.global_ctors with __cxa_atexit calls.
   addPass(createLowerGlobalDtorsLegacyPass());
 
+  // Lower variadic functions and intrinsics
+  addPass(createExpandVariadicsPass(ExpandVariadicsMode::Disable));
+  
   // Fix function bitcasts, as WebAssembly requires caller and callee signatures
   // to match.
   addPass(createWebAssemblyFixFunctionBitcasts());

@@ -14,6 +14,13 @@ declare void @sink_i32(i32)
 %struct.__va_list_tag = type { i32, i32, ptr, ptr }
 
 ;; Simple function is split into two functions
+; X86-LABEL: define void @x86_non_inlinable(
+; X86:       entry:
+; X86:       %va_list = alloca ptr, align 4
+; X86:       call void @llvm.va_start.p0(ptr %va_list)
+; X86:       tail call void @x86_non_inlinable.valist(ptr %va_list)
+; X86:       ret void
+; X86:       }
 ; X86-LABEL: define internal void @x86_non_inlinable.valist(
 ; X86:       entry:
 ; X86:       %va = alloca ptr, align 4
@@ -23,13 +30,6 @@ declare void @sink_i32(i32)
 ; X86:       call void @sink_valist(ptr noundef %0)
 ; X86:       ret void
 ; X86:     }
-; X86-LABEL: define void @x86_non_inlinable(
-; X86:       entry:
-; X86:       %va_list = alloca ptr, align 4
-; X86:       call void @llvm.va_start.p0(ptr %va_list)
-; X86:       tail call void @x86_non_inlinable.valist(ptr %va_list)
-; X86:       ret void
-; X86:       }
 define void @x86_non_inlinable(...)  {
 entry:
   %va = alloca ptr, align 4
@@ -48,6 +48,13 @@ define void @x86_caller(i32 %x) {
 
 
 ;; As above, but for x64 - the different va_list type means a missing load.
+; X64-LABEL: define void @x64_non_inlinable(
+; X64:       entry:
+; X64:       %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
+; X64:       call void @llvm.va_start.p0(ptr %va_list)
+; X64:       tail call void @x64_non_inlinable.valist(ptr %va_list)
+; X64:       ret void
+; X64:       }
 ; X64-LABEL: define internal void @x64_non_inlinable.valist(
 ; X64:       entry:
 ; X64:       %va = alloca [1 x %struct.__va_list_tag], align 16
@@ -56,13 +63,6 @@ define void @x86_caller(i32 %x) {
 ; X64:       call void @sink_valist(ptr noundef %va)
 ; X64:       ret void
 ; X64:     }
-; X64-LABEL: define void @x64_non_inlinable(
-; X64:       entry:
-; X64:       %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
-; X64:       call void @llvm.va_start.p0(ptr %va_list)
-; X64:       tail call void @x64_non_inlinable.valist(ptr %va_list)
-; X64:       ret void
-; X64:       }
 define void @x64_non_inlinable(...)  {
 entry:
   %va = alloca [1 x %struct.__va_list_tag], align 16

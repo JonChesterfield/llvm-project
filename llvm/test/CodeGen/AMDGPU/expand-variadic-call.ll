@@ -36,11 +36,11 @@ define hidden void @copy(ptr noundef %va) {
 ; CHECK-NEXT:    %va.addr.ascast = addrspacecast ptr addrspace(5) %va.addr to ptr
 ; CHECK-NEXT:    %cp.ascast = addrspacecast ptr addrspace(5) %cp to ptr
 ; CHECK-NEXT:    store ptr %va, ptr addrspace(5) %va.addr, align 8, !tbaa !3
-; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %cp) #2
+; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %cp) #3
 ; CHECK-NEXT:    call void @llvm.memcpy.inline.p0.p0.i32(ptr %cp.ascast, ptr %va.addr.ascast, i32 8, i1 false)
 ; CHECK-NEXT:    %0 = load ptr, ptr addrspace(5) %cp, align 8, !tbaa !3
-; CHECK-NEXT:    call void @valist(ptr noundef %0) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %cp) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %0) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %cp) #3
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -70,11 +70,11 @@ define hidden void @start_once(...) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s = alloca ptr, align 8, addrspace(5)
 ; CHECK-NEXT:    %s.ascast = addrspacecast ptr addrspace(5) %s to ptr
-; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %s) #2
+; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %s) #3
 ; CHECK-NEXT:    store ptr addrspace(5) %varargs, ptr %s.ascast, align 4
 ; CHECK-NEXT:    %0 = load ptr, ptr addrspace(5) %s, align 8, !tbaa !3
-; CHECK-NEXT:    call void @valist(ptr noundef %0) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %s) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %0) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %s) #3
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -100,16 +100,16 @@ define hidden void @start_twice(...) {
 ; CHECK-NEXT:    %s1 = alloca ptr, align 8, addrspace(5)
 ; CHECK-NEXT:    %s0.ascast = addrspacecast ptr addrspace(5) %s0 to ptr
 ; CHECK-NEXT:    %s1.ascast = addrspacecast ptr addrspace(5) %s1 to ptr
-; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %s0) #2
-; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %s1) #2
+; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %s0) #3
+; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %s1) #3
 ; CHECK-NEXT:    store ptr addrspace(5) %varargs, ptr %s0.ascast, align 4
 ; CHECK-NEXT:    %0 = load ptr, ptr addrspace(5) %s0, align 8, !tbaa !3
-; CHECK-NEXT:    call void @valist(ptr noundef %0) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %0) #3
 ; CHECK-NEXT:    store ptr addrspace(5) %varargs, ptr %s1.ascast, align 4
 ; CHECK-NEXT:    %1 = load ptr, ptr addrspace(5) %s1, align 8, !tbaa !3
-; CHECK-NEXT:    call void @valist(ptr noundef %1) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %s1) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %s0) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %1) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %s1) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %s0) #3
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -139,7 +139,7 @@ define hidden void @single_i32(i32 noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 4, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr addrspace(5) %0, align 4
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 4, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -157,7 +157,7 @@ define hidden void @single_double(double noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 8, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_double.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store double %x, ptr addrspace(5) %0, align 8
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 8, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -173,7 +173,7 @@ define hidden void @single_v4f32(<4 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 16, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v4f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <4 x float> %x, ptr addrspace(5) %0, align 16
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 16, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -189,7 +189,7 @@ define hidden void @single_v8f32(<8 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 32, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v8f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <8 x float> %x, ptr addrspace(5) %0, align 32
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 32, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -205,7 +205,7 @@ define hidden void @single_v16f32(<16 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 64, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v16f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <16 x float> %x, ptr addrspace(5) %0, align 64
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 64, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -221,7 +221,7 @@ define hidden void @single_v32f32(<32 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 128, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v32f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <32 x float> %x, ptr addrspace(5) %0, align 128
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 128, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -239,7 +239,7 @@ define hidden void @i32_double(i32 noundef %x, double noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr addrspace(5) %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_double.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store double %y, ptr addrspace(5) %1, align 8
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 16, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -257,7 +257,7 @@ define hidden void @double_i32(double noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store double %x, ptr addrspace(5) %0, align 8
 ; CHECK-NEXT:    %1 = getelementptr inbounds %double_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr addrspace(5) %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 12, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -285,7 +285,7 @@ define hidden void @i32_libcS(i32 noundef %x, i8 %y.coerce0, i16 %y.coerce1, i32
 ; CHECK-NEXT:    store float %y.coerce4, ptr addrspace(5) %5, align 4
 ; CHECK-NEXT:    %6 = getelementptr inbounds %i32_libcS.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 9
 ; CHECK-NEXT:    store double %y.coerce5, ptr addrspace(5) %6, align 8
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 40, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -313,7 +313,7 @@ define hidden void @libcS_i32(i8 %x.coerce0, i16 %x.coerce1, i32 %x.coerce2, i64
 ; CHECK-NEXT:    store double %x.coerce5, ptr addrspace(5) %5, align 8
 ; CHECK-NEXT:    %6 = getelementptr inbounds %libcS_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 8
 ; CHECK-NEXT:    store i32 %y, ptr addrspace(5) %6, align 4
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 36, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -331,7 +331,7 @@ define hidden void @i32_v4f32(i32 noundef %x, <4 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr addrspace(5) %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v4f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <4 x float> %y, ptr addrspace(5) %1, align 16
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 32, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -349,7 +349,7 @@ define hidden void @v4f32_i32(<4 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <4 x float> %x, ptr addrspace(5) %0, align 16
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v4f32_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr addrspace(5) %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 20, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -367,7 +367,7 @@ define hidden void @i32_v8f32(i32 noundef %x, <8 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr addrspace(5) %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v8f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <8 x float> %y, ptr addrspace(5) %1, align 32
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 64, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -385,7 +385,7 @@ define hidden void @v8f32_i32(<8 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <8 x float> %x, ptr addrspace(5) %0, align 32
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v8f32_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr addrspace(5) %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 36, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -403,7 +403,7 @@ define hidden void @i32_v16f32(i32 noundef %x, <16 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr addrspace(5) %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v16f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <16 x float> %y, ptr addrspace(5) %1, align 64
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 128, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -421,7 +421,7 @@ define hidden void @v16f32_i32(<16 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <16 x float> %x, ptr addrspace(5) %0, align 64
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v16f32_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr addrspace(5) %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 68, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -439,7 +439,7 @@ define hidden void @i32_v32f32(i32 noundef %x, <32 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr addrspace(5) %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v32f32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <32 x float> %y, ptr addrspace(5) %1, align 128
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 256, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -457,7 +457,7 @@ define hidden void @v32f32_i32(<32 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <32 x float> %x, ptr addrspace(5) %0, align 128
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v32f32_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr addrspace(5) %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 132, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -474,7 +474,7 @@ define hidden void @indirect_single_i32(i32 noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p5(i64 4, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    %1 = getelementptr inbounds %indirect_single_i32.vararg, ptr addrspace(5) %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr addrspace(5) %1, align 4
-; CHECK-NEXT:    call void %0(ptr addrspace(5) %vararg_buffer) #2
+; CHECK-NEXT:    call void %0(ptr addrspace(5) %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p5(i64 4, ptr addrspace(5) %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;

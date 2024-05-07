@@ -52,6 +52,7 @@
 #include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/Transforms/Utils/ModuleUtils.h"
 
 #include <cstdio>
 
@@ -61,15 +62,18 @@ using namespace llvm;
 
 cl::opt<ExpandVariadicsMode> ExpandVariadicsModeOption(
     DEBUG_TYPE "-override", cl::desc("Override the behaviour of " DEBUG_TYPE),
-    cl::init(ExpandVariadicsMode::unspecified),
-    cl::values(clEnumValN(ExpandVariadicsMode::unspecified, "unspecified",
+    cl::init(ExpandVariadicsMode::Unspecified),
+    cl::values(clEnumValN(ExpandVariadicsMode::Unspecified, "unspecified",
                           "Use the implementation defaults"),
-               clEnumValN(ExpandVariadicsMode::disable, "disable",
+               clEnumValN(ExpandVariadicsMode::Disable, "disable",
                           "Disable the pass entirely"),
-               clEnumValN(ExpandVariadicsMode::optimize, "optimize",
+               clEnumValN(ExpandVariadicsMode::Optimize, "optimize",
                           "Optimise without changing ABI"),
-               clEnumValN(ExpandVariadicsMode::lowering, "lowering",
-                          "Change variadic calling convention")));
+               clEnumValN(ExpandVariadicsMode::Lowering, "lowering",
+                          "Change variadic calling convention"),
+               clEnumValN(ExpandVariadicsMode::WithoutRewritingCalls,
+                          "without-rewriting-calls",
+                          "Change functions, not calls to functions")));
 
 namespace {
 
@@ -249,6 +253,11 @@ public:
       return create<VoidPtr>(4, 0);
     }
 
+    case Triple::wasm32:
+    case Triple::wasm64: {
+      return create<VoidPtr>(4, 0);
+    }
+
     case Triple::x86: {
       // These seem to all fall out the same, despite getTypeStackAlign
       // implying otherwise.
@@ -319,7 +328,7 @@ class ExpandVariadics : public ModulePass {
   static ExpandVariadicsMode
   withCommandLineOverride(ExpandVariadicsMode LLVMRequested) {
     ExpandVariadicsMode UserRequested = ExpandVariadicsModeOption;
-    return (UserRequested == ExpandVariadicsMode::unspecified) ? LLVMRequested
+    return (UserRequested == ExpandVariadicsMode::Unspecified) ? LLVMRequested
                                                                : UserRequested;
   }
 
@@ -336,17 +345,20 @@ public:
   bool expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB, FunctionType *,
                   Function *NF);
 
-  // Given a variadic function, return a function taking a va_list that can be
-  // called instead of the original. Mutates F.
-  Function *deriveInlinableVariadicFunctionPair(Module &M, IRBuilder<> &Builder,
-                                                Function &F);
+  Function *replaceAllUsesWithNewDeclaration(Module &M,
+                                             Function *OriginalFunction);
+  Function *deriveFixedArityReplacement(Module &M, IRBuilder<> &Builder,
+                                        Function *OriginalFunction);
+  Function *defineVariadicWrapper(Module &M, IRBuilder<> &Builder,
+                                  Function *VariadicWrapper,
+                                  Function *FixedArityReplacement);
 
   bool runOnFunction(Module &M, IRBuilder<> &Builder, Function *F);
 
   // Entry point
   bool runOnModule(Module &M) override;
 
-  bool rewriteABI() { return Mode == ExpandVariadicsMode::lowering; }
+  bool rewriteABI() { return Mode == ExpandVariadicsMode::Lowering; }
 
   void memcpyVAListPointers(const DataLayout &DL, IRBuilder<> &Builder,
                             Value *Dst, Value *Src) {
@@ -550,7 +562,7 @@ public:
 
 bool ExpandVariadics::runOnModule(Module &M) {
   bool Changed = false;
-  if (Mode == ExpandVariadicsMode::disable)
+  if (Mode == ExpandVariadicsMode::Disable)
     return Changed;
 
   llvm::Triple Triple(M.getTargetTriple());
@@ -562,7 +574,7 @@ bool ExpandVariadics::runOnModule(Module &M) {
 
   ABI = VariadicABIInfo::create(Triple);
   if (!ABI) {
-    if (Mode == ExpandVariadicsMode::lowering) {
+    if (Mode == ExpandVariadicsMode::Lowering) {
       report_fatal_error(
           "Requested variadic lowering is unimplemented on this target");
     }
@@ -581,12 +593,13 @@ bool ExpandVariadics::runOnModule(Module &M) {
   // in exchange for additional book keeping to avoid transforming
   // the same function multiple times when it contains multiple va_start.
   // Leaving that compile time optimisation for a later patch.
+
   for (Function &F : llvm::make_early_inc_range(M))
     Changed |= runOnFunction(M, Builder, &F);
 
   // After runOnFunction, all known calls to known variadic functions have been
   // replaced. va_start intrinsics are presently (and invalidly!) only present
-  // in functions thart used to be variadic and have now been mutated to take a
+  // in functions that used to be variadic and have now been replaced to take a
   // va_list instead. If lowering as opposed to optimising, calls to unknown
   // variadic functions have also been replaced.
 
@@ -603,12 +616,7 @@ bool ExpandVariadics::runOnModule(Module &M) {
                                                                    ArgType);
   }
 
-  // Variadic intrinsics are now gone. The va_start have been replaced with the
-  // equivalent of a va_copy from the newly appended va_list argument, va_end
-  // and va_copy are removed. All that remains is for the lowering pass to find
-  // indirect calls and rewrite those as well.
-
-  if (Mode == ExpandVariadicsMode::lowering) {
+  if (Mode == ExpandVariadicsMode::Lowering) {
     for (Function &F : llvm::make_early_inc_range(M)) {
       if (F.isDeclaration())
         continue;
@@ -635,67 +643,158 @@ bool ExpandVariadics::runOnModule(Module &M) {
 }
 
 bool ExpandVariadics::runOnFunction(Module &M, IRBuilder<> &Builder,
-                                    Function *F) {
+                                    Function *OriginalFunction) {
+  const bool invoke_hack = true; // Work around miscompiling Invoke
+
   bool Changed = false;
 
-  // fprintf(stderr, "Called runOn: %s\n", F->getName().str().c_str());
+  // fprintf(stderr, "Called runOn: %s\n",
+  // OriginalFunction->getName().str().c_str());
+
+  // TODO: Check what F.hasExactDefinition() does
 
   // This check might be too coarse - there are probably cases where
   // splitting a function is bad but it's usable without splitting
-  if (!expansionApplicableToFunction(M, F))
+  if (!expansionApplicableToFunction(M, OriginalFunction))
     return false;
 
   // TODO: Leave "thunk" attribute functions alone?
 
   // Need more tests than this. Weak etc. Some are in expansionApplicable.
-  if (F->isDeclaration() && !rewriteABI()) {
-    return false;
+
+  if (OriginalFunction->isDeclaration()) {
+    if (Mode == ExpandVariadicsMode::Optimize) {
+      return false;
+    }
+#if 0
+      // want without rewriting to continue past this branch
+      if (!rewriteABI()) {
+        return false;
+      }
+#endif
   }
 
-  // TODO: Is the lazy construction here still useful?
-  Function *Equivalent = deriveInlinableVariadicFunctionPair(M, Builder, *F);
+  const bool OriginalFunctionIsDeclaration = OriginalFunction->isDeclaration();
 
-  for (User *U : llvm::make_early_inc_range(F->users())) {
-    // TODO: A test where the call instruction takes a variadic function as
-    // a parameter other than the one it is calling
+  Function *VariadicWrapper =
+      replaceAllUsesWithNewDeclaration(M, OriginalFunction);
+  assert(VariadicWrapper->isDeclaration());
+  assert(OriginalFunction->use_empty());
+
+  Function *FixedArityReplacement =
+      deriveFixedArityReplacement(M, Builder, OriginalFunction);
+  assert(OriginalFunction->isDeclaration());
+  assert(FixedArityReplacement->isDeclaration() ==
+         OriginalFunctionIsDeclaration);
+
+  assert(VariadicWrapper->isDeclaration());
+  Function *VariadicWrapperDefine =
+      defineVariadicWrapper(M, Builder, VariadicWrapper, FixedArityReplacement);
+  assert(VariadicWrapperDefine == VariadicWrapper);
+
+  assert(!VariadicWrapper->isDeclaration());
+
+  if (Mode == ExpandVariadicsMode::WithoutRewritingCalls) {
+    OriginalFunction->setName(OriginalFunction->getName() + ".original");
+    return true;
+  }
+
+  for (User *U : llvm::make_early_inc_range(VariadicWrapper->users())) {
+    if (invoke_hack && !rewriteABI() && isa<InvokeInst>(U)) {
+      continue;
+    }
+
     if (CallBase *CB = dyn_cast<CallBase>(U)) {
       Value *calledOperand = CB->getCalledOperand();
-      if (F == calledOperand) {
-        Changed |= expandCall(M, Builder, CB, F->getFunctionType(), Equivalent);
+      if (VariadicWrapper == calledOperand) {
+        Changed |=
+            expandCall(M, Builder, CB, VariadicWrapper->getFunctionType(),
+                       FixedArityReplacement);
       }
     }
   }
 
+  // We now have:
+  // 1. the original function, now as a declaration with no uses
+  // 2. a variadic function that unconditionally calls a fixed arity replacement
+  // 3. a fixed arity function equivalent to the original function
+
+  Function *const ExternallyAccessible =
+      rewriteABI() ? FixedArityReplacement : VariadicWrapper;
+  Function *const InternalOnly = (ExternallyAccessible == FixedArityReplacement)
+                                     ? VariadicWrapper
+                                     : FixedArityReplacement;
+
+  // care needed over other attributes, metadata etc
+
+  ExternallyAccessible->setLinkage(OriginalFunction->getLinkage());
+  ExternallyAccessible->setVisibility(OriginalFunction->getVisibility());
+  ExternallyAccessible->setComdat(OriginalFunction->getComdat());
+  ExternallyAccessible->takeName(OriginalFunction);
+
+  InternalOnly->setVisibility(GlobalValue::DefaultVisibility);
+  InternalOnly->setLinkage(GlobalValue::InternalLinkage);
+
+  OriginalFunction->eraseFromParent();
+
+  InternalOnly->removeDeadConstantUsers();
+
   if (rewriteABI()) {
-    // No direct calls remain to F, remaining uses are things like address
-    // escaping, modulo errors in this implementation.
-    for (User *U : llvm::make_early_inc_range(F->users()))
+    // Known calls to the function have been removed
+    // Indirect calls are fixed up after the loop over all functions
+    // The rewrite ABI plan is to replace all uses of the internal function
+    for (User *U : llvm::make_early_inc_range(VariadicWrapper->users())) {
+      if (invoke_hack && isa<InvokeInst>(U)) {
+        continue;
+      }
       if (CallBase *CB = dyn_cast<CallBase>(U)) {
         Value *calledOperand = CB->getCalledOperand();
-        if (F == calledOperand) {
+        if (VariadicWrapper == calledOperand) {
           report_fatal_error(
-              "ExpandVA abi requires eliminating call uses first\n");
+              "ExpandVA abi requires eliminating call uses first");
         }
       }
+    }
+    VariadicWrapper->replaceAllUsesWith(FixedArityReplacement);
+    // FixedArityReplacement->replaceAllUsesWith(VariadicWrapper); // probably
+    // need to cast it
 
-    Changed = true;
-    // Converting the original variadic function in-place into the equivalent
-    // one.
-    Equivalent->setLinkage(F->getLinkage());
-    Equivalent->setVisibility(F->getVisibility());
-    Equivalent->takeName(F);
-
-    // Indirect calls still need to be patched up
-    // DAE bitcasts it, todo: check block addresses
-    F->replaceAllUsesWith(Equivalent);
-    F->eraseFromParent();
+    if (!VariadicWrapper->use_empty()) {
+      report_fatal_error("Should be no remaining uses");
+    }
   }
 
   return Changed;
 }
 
-Function *ExpandVariadics::deriveInlinableVariadicFunctionPair(
-    Module &M, IRBuilder<> &Builder, Function &F) {
+Function *
+ExpandVariadics::replaceAllUsesWithNewDeclaration(Module &M,
+                                                  Function *OriginalFunction) {
+  auto &Ctx = M.getContext();
+  Function &F = *OriginalFunction;
+  FunctionType *FTy = F.getFunctionType();
+  Function *NF = Function::Create(FTy, F.getLinkage(), F.getAddressSpace());
+
+  NF->setName(F.getName() + ".varargs");
+  NF->IsNewDbgInfoFormat = F.IsNewDbgInfoFormat;
+
+  // Could give it the same visibility/linkage as the original
+  F.getParent()->getFunctionList().insert(F.getIterator(), NF);
+
+  // might have a shorthand
+  AttrBuilder ParamAttrs(Ctx);
+  AttributeList Attrs = NF->getAttributes();
+  Attrs = Attrs.addParamAttributes(Ctx, FTy->getNumParams(), ParamAttrs);
+  NF->setAttributes(Attrs);
+
+  OriginalFunction->replaceAllUsesWith(NF);
+  return NF;
+}
+
+Function *
+ExpandVariadics::deriveFixedArityReplacement(Module &M, IRBuilder<> &Builder,
+                                             Function *OriginalFunction) {
+  Function &F = *OriginalFunction;
   // The purpose here is split the variadic function F into two functions
   // One is a variadic function that bundles the passed argument into a va_list
   // and passes it to the second function. The second function does whatever
@@ -704,7 +803,6 @@ Function *ExpandVariadics::deriveInlinableVariadicFunctionPair(
   assert(expansionApplicableToFunction(M, &F));
 
   auto &Ctx = M.getContext();
-  const DataLayout &DL = M.getDataLayout();
 
   // Returned value isDeclaration() is equal to F.isDeclaration()
   // but that invariant is not satisfied throughout this function
@@ -714,23 +812,23 @@ Function *ExpandVariadics::deriveInlinableVariadicFunctionPair(
   SmallVector<Type *> ArgTypes(FTy->param_begin(), FTy->param_end());
   ArgTypes.push_back(ABI.VAList->vaListParameterType(M));
 
-  FunctionType *NFTy = inlinableVariadicFunctionType(M, F.getFunctionType());
+  FunctionType *NFTy = inlinableVariadicFunctionType(M, FTy);
   Function *NF = Function::Create(NFTy, F.getLinkage(), F.getAddressSpace());
 
   // Note - same attribute handling as DeadArgumentElimination
   NF->copyAttributesFrom(&F);
-  NF->setComdat(F.getComdat()); // beware weak
+  //  NF->setComdat(F.getComdat()); // beware weak
   F.getParent()->getFunctionList().insert(F.getIterator(), NF);
   NF->setName(F.getName() + ".valist");
   NF->IsNewDbgInfoFormat = F.IsNewDbgInfoFormat;
 
   // New function is default visibility and internal
   // Need to set visibility before linkage to avoid an assert in setVisibility
-  NF->setVisibility(GlobalValue::DefaultVisibility);
-  NF->setLinkage(GlobalValue::InternalLinkage);
+  //  NF->setVisibility(GlobalValue::DefaultVisibility);
+  //  NF->setLinkage(GlobalValue::InternalLinkage);
 
   AttrBuilder ParamAttrs(Ctx);
-  ParamAttrs.addAttribute(Attribute::NoAlias);
+  ParamAttrs.addAttribute(Attribute::NoAlias); // which attr is this changing?
 
   // TODO: When can the va_list argument have addAlignmentAttr called on it?
   // It improves codegen lot in the non-inlined case. Probably target
@@ -757,43 +855,50 @@ Function *ExpandVariadics::deriveInlinableVariadicFunctionPair(
   F.getAllMetadata(MDs);
   for (auto [KindID, Node] : MDs)
     NF->addMetadata(KindID, *Node);
-
-  if (FunctionIsDefinition) {
-    // The blocks have been stolen so it's now a declaration
-    assert(F.isDeclaration());
-    Type *VaListTy = ABI.VAList->vaListType(Ctx);
-
-    auto *BB = BasicBlock::Create(Ctx, "entry", &F);
-    Builder.SetInsertPoint(BB);
-
-    Value *VaListInstance = Builder.CreateAlloca(VaListTy, nullptr, "va_list");
-
-    Builder.CreateIntrinsic(Intrinsic::vastart, {DL.getAllocaPtrType(Ctx)},
-                            {VaListInstance});
-
-    SmallVector<Value *> Args;
-    for (Argument &A : F.args())
-      Args.push_back(&A);
-
-    // Shall we put the extra arg in alloca addrspace? Probably yes
-    VaListInstance = Builder.CreatePointerBitCastOrAddrSpaceCast(
-        VaListInstance, ABI.VAList->vaListParameterType(M));
-    Args.push_back(VaListInstance);
-
-    CallInst *Result = Builder.CreateCall(NF, Args);
-    Result->setTailCallKind(CallInst::TCK_Tail);
-
-    assert(ABI.VAList->vaEndIsNop()); // If this changes, insert a va_end here
-
-    if (Result->getType()->isVoidTy())
-      Builder.CreateRetVoid();
-    else
-      Builder.CreateRet(Result);
-  }
-
-  assert(F.isDeclaration() == NF->isDeclaration());
+  F.clearMetadata();
 
   return NF;
+}
+
+Function *
+ExpandVariadics::defineVariadicWrapper(Module &M, IRBuilder<> &Builder,
+                                       Function *VariadicWrapper,
+                                       Function *FixedArityReplacement) {
+  auto &Ctx = Builder.getContext();
+  assert(VariadicWrapper->isDeclaration());
+  Function &F = *VariadicWrapper;
+
+  assert(F.isDeclaration());
+  Type *VaListTy = ABI.VAList->vaListType(Ctx);
+
+  auto *BB = BasicBlock::Create(Ctx, "entry", &F);
+  Builder.SetInsertPoint(BB);
+
+  Value *VaListInstance = Builder.CreateAlloca(VaListTy, nullptr, "va_list");
+  const DataLayout &DL = M.getDataLayout();
+  Builder.CreateIntrinsic(Intrinsic::vastart, {DL.getAllocaPtrType(Ctx)},
+                          {VaListInstance});
+
+  SmallVector<Value *> Args;
+  for (Argument &A : F.args())
+    Args.push_back(&A);
+
+  // Shall we put the extra arg in alloca addrspace? Probably yes
+  VaListInstance = Builder.CreatePointerBitCastOrAddrSpaceCast(
+      VaListInstance, ABI.VAList->vaListParameterType(M));
+  Args.push_back(VaListInstance);
+
+  CallInst *Result = Builder.CreateCall(FixedArityReplacement, Args);
+  Result->setTailCallKind(CallInst::TCK_Tail);
+
+  assert(ABI.VAList->vaEndIsNop()); // If this changes, insert a va_end here
+
+  if (Result->getType()->isVoidTy())
+    Builder.CreateRetVoid();
+  else
+    Builder.CreateRet(Result);
+
+  return VariadicWrapper;
 }
 
 bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
@@ -882,6 +987,9 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
   // Put the alloca to hold the variadic args in the entry basic block.
   // The clumsy construction is to set a the alignment on the instance
   Builder.SetInsertPointPastAllocas(CBF);
+  Builder.SetCurrentDebugLocation(
+      CB->getStableDebugLoc()); // some set insert points write to this, some
+                                // dont
 
   // The struct instance needs to be at least MaxFieldAlign for the alignment of
   // the fields to be correct at runtime. Use the native stack alignment instead
@@ -917,6 +1025,9 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
     if (!ABI.VAList->passedInSSARegister()) {
       Type *VaListTy = ABI.VAList->vaListType(Ctx);
       Builder.SetInsertPointPastAllocas(CBF);
+      Builder.SetCurrentDebugLocation(
+          CB->getStableDebugLoc()); // some set insert points write to this,
+                                    // some dont
       VaList = Builder.CreateAlloca(VaListTy, nullptr, "va_list");
       Builder.SetInsertPoint(CB);
       Builder.CreateLifetimeStart(VaList, sizeOfAlloca(Ctx, DL, VaList));
@@ -991,6 +1102,7 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
 bool ExpandVariadics::expandVAIntrinsicCall(IRBuilder<> &Builder,
                                             const DataLayout &DL,
                                             VAStartInst *Inst) {
+  // TODO: Document or remove this action at a distance trickery
   Function *ContainingFunction = Inst->getFunction();
   if (ContainingFunction->isVarArg())
     return false;
@@ -1049,8 +1161,8 @@ PreservedAnalyses ExpandVariadicsPass::run(Module &M, ModuleAnalysisManager &) {
 
 ExpandVariadicsPass::ExpandVariadicsPass(OptimizationLevel Level)
     : ExpandVariadicsPass(Level == OptimizationLevel::O0
-                              ? ExpandVariadicsMode::disable
-                              : ExpandVariadicsMode::optimize) {}
+                              ? ExpandVariadicsMode::Disable
+                              : ExpandVariadicsMode::Optimize) {}
 
 ExpandVariadicsPass::ExpandVariadicsPass(ExpandVariadicsMode Mode)
     : ConstructedMode(Mode) {}

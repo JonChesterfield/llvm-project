@@ -34,11 +34,11 @@ define void @copy(ptr noundef %va) {
 ; CHECK-NEXT:    %va.addr = alloca ptr, align 8
 ; CHECK-NEXT:    %cp = alloca ptr, align 8
 ; CHECK-NEXT:    store ptr %va, ptr %va.addr, align 8, !tbaa !2
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %cp) #2
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %cp) #3
 ; CHECK-NEXT:    call void @llvm.memcpy.inline.p0.p0.i32(ptr %cp, ptr %va.addr, i32 8, i1 false)
 ; CHECK-NEXT:    %0 = load ptr, ptr %cp, align 8, !tbaa !2
-; CHECK-NEXT:    call void @valist(ptr noundef %0) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %cp) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %0) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %cp) #3
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -65,11 +65,11 @@ define void @start_once(...) {
 ; CHECK-LABEL: define {{[^@]+}}@start_once(ptr noalias %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s = alloca ptr, align 8
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %s) #2
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %s) #3
 ; CHECK-NEXT:    store ptr %varargs, ptr %s, align 8
 ; CHECK-NEXT:    %0 = load ptr, ptr %s, align 8, !tbaa !2
-; CHECK-NEXT:    call void @valist(ptr noundef %0) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %s) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %0) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %s) #3
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -92,16 +92,16 @@ define void @start_twice(...) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s0 = alloca ptr, align 8
 ; CHECK-NEXT:    %s1 = alloca ptr, align 8
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %s0) #2
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %s1) #2
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %s0) #3
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %s1) #3
 ; CHECK-NEXT:    store ptr %varargs, ptr %s0, align 8
 ; CHECK-NEXT:    %0 = load ptr, ptr %s0, align 8, !tbaa !2
-; CHECK-NEXT:    call void @valist(ptr noundef %0) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %0) #3
 ; CHECK-NEXT:    store ptr %varargs, ptr %s1, align 8
 ; CHECK-NEXT:    %1 = load ptr, ptr %s1, align 8, !tbaa !2
-; CHECK-NEXT:    call void @valist(ptr noundef %1) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %s1) #2
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %s0) #2
+; CHECK-NEXT:    call void @valist(ptr noundef %1) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %s1) #3
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %s0) #3
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -129,7 +129,7 @@ define void @single_i32(i32 noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 4, ptr %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_i32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 4, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -147,7 +147,7 @@ define void @single_double(double noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_double.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store double %x, ptr %0, align 8
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 8, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -163,7 +163,7 @@ define void @single_v4f32(<4 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 16, ptr %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v4f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <4 x float> %x, ptr %0, align 16
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 16, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -179,7 +179,7 @@ define void @single_v8f32(<8 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 32, ptr %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v8f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <8 x float> %x, ptr %0, align 32
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 32, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -195,7 +195,7 @@ define void @single_v16f32(<16 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 64, ptr %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v16f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <16 x float> %x, ptr %0, align 64
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 64, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -211,7 +211,7 @@ define void @single_v32f32(<32 x float> noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 128, ptr %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %single_v32f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store <32 x float> %x, ptr %0, align 128
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 128, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -229,7 +229,7 @@ define void @i32_double(i32 noundef %x, double noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_double.vararg, ptr %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store double %y, ptr %1, align 8
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 16, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -247,7 +247,7 @@ define void @double_i32(double noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store double %x, ptr %0, align 8
 ; CHECK-NEXT:    %1 = getelementptr inbounds %double_i32.vararg, ptr %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 12, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -265,7 +265,7 @@ define void @i32_libcS(i32 noundef %x, ptr noundef byval(%struct.libcS) align 8 
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_libcS.vararg, ptr %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i64(ptr %1, ptr %y, i64 32, i1 false)
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 40, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -283,7 +283,7 @@ define void @libcS_i32(ptr noundef byval(%struct.libcS) align 8 %x, i32 noundef 
 ; CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i64(ptr %0, ptr %x, i64 32, i1 false)
 ; CHECK-NEXT:    %1 = getelementptr inbounds %libcS_i32.vararg, ptr %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 36, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -301,7 +301,7 @@ define void @i32_v4f32(i32 noundef %x, <4 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v4f32.vararg, ptr %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <4 x float> %y, ptr %1, align 16
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 32, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -319,7 +319,7 @@ define void @v4f32_i32(<4 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <4 x float> %x, ptr %0, align 16
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v4f32_i32.vararg, ptr %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 20, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -337,7 +337,7 @@ define void @i32_v8f32(i32 noundef %x, <8 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v8f32.vararg, ptr %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <8 x float> %y, ptr %1, align 32
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 64, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -355,7 +355,7 @@ define void @v8f32_i32(<8 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <8 x float> %x, ptr %0, align 32
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v8f32_i32.vararg, ptr %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 36, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -373,7 +373,7 @@ define void @i32_v16f32(i32 noundef %x, <16 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v16f32.vararg, ptr %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <16 x float> %y, ptr %1, align 64
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 128, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -391,7 +391,7 @@ define void @v16f32_i32(<16 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <16 x float> %x, ptr %0, align 64
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v16f32_i32.vararg, ptr %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 68, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -409,7 +409,7 @@ define void @i32_v32f32(i32 noundef %x, <32 x float> noundef %y) {
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v32f32.vararg, ptr %vararg_buffer, i32 0, i32 2
 ; CHECK-NEXT:    store <32 x float> %y, ptr %1, align 128
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 256, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -427,7 +427,7 @@ define void @v32f32_i32(<32 x float> noundef %x, i32 noundef %y) {
 ; CHECK-NEXT:    store <32 x float> %x, ptr %0, align 128
 ; CHECK-NEXT:    %1 = getelementptr inbounds %v32f32_i32.vararg, ptr %vararg_buffer, i32 0, i32 1
 ; CHECK-NEXT:    store i32 %y, ptr %1, align 4
-; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void @vararg(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 132, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
@@ -444,7 +444,7 @@ define void @indirect_single_i32(i32 noundef %x) {
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 4, ptr %vararg_buffer)
 ; CHECK-NEXT:    %1 = getelementptr inbounds %indirect_single_i32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr %1, align 4
-; CHECK-NEXT:    call void %0(ptr %vararg_buffer) #2
+; CHECK-NEXT:    call void %0(ptr %vararg_buffer) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 4, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
