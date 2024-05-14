@@ -14,6 +14,8 @@ target triple = "i386-unknown-linux-gnu"
 ; CHECK: %single_v32f32.vararg = type <{ <32 x float> }>
 ; CHECK: %i32_double.vararg = type <{ i32, double }>
 ; CHECK: %double_i32.vararg = type <{ double, i32 }>
+; CHECK: %i32_libcS.vararg = type <{ i32, %struct.libcS }>
+; CHECK: %libcS_i32.vararg = type <{ %struct.libcS, i32 }>
 ; CHECK: %i32_v4f32.vararg = type <{ i32, [12 x i8], <4 x float> }>
 ; CHECK: %v4f32_i32.vararg = type <{ <4 x float>, i32 }>
 ; CHECK: %i32_v8f32.vararg = type <{ i32, [28 x i8], <8 x float> }>
@@ -59,7 +61,7 @@ declare void @valist(ptr noundef)
 declare void @llvm.lifetime.end.p0(i64 immarg, ptr nocapture) #0
 
 define void @start_once(...) {
-; CHECK-LABEL: define {{[^@]+}}@start_once(ptr noalias %varargs) {
+; CHECK-LABEL: define {{[^@]+}}@start_once(ptr %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s = alloca ptr, align 4
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 4, ptr nonnull %s) #3
@@ -85,7 +87,7 @@ declare void @llvm.va_start.p0(ptr) #1
 declare void @llvm.va_end.p0(ptr) #1
 
 define void @start_twice(...) {
-; CHECK-LABEL: define {{[^@]+}}@start_twice(ptr noalias %varargs) {
+; CHECK-LABEL: define {{[^@]+}}@start_twice(ptr %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s0 = alloca ptr, align 4
 ; CHECK-NEXT:    %s1 = alloca ptr, align 4

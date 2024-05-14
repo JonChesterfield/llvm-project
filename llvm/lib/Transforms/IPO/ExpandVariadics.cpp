@@ -108,12 +108,17 @@ struct VAListInterface {
   // The type of a va_list as a function argument as lowered by C
   virtual Type *vaListParameterType(Module &M) = 0;
 
-  // Initialise an allocated va_list object to point to an already
-  // initialised contiguous memory region.
+  // Initialize an allocated va_list object to point to an already
+  // initialized contiguous memory region.
   // Return the value to pass as the va_list argument
   virtual Value *initializeVAList(LLVMContext &Ctx, IRBuilder<> &Builder,
                                   AllocaInst *, Value * /*buffer*/) = 0;
 
+  // This is hacky and possibly in the wrong place
+  // The void* style varargs seems likely to pass byval using a pointer
+  // but it looks like x64 passes it embedded into the frame directly
+  virtual bool byValInlinedIntoFrame() = 0;
+  
   // Simple lowering suffices for va_end, va_copy for current targets
   bool vaEndIsNop() { return true; }
   bool vaCopyIsMemcpy() { return true; }
@@ -135,6 +140,10 @@ struct VoidPtr final : public VAListInterface {
                           AllocaInst * /*va_list*/, Value *buffer) override {
     return buffer;
   }
+
+  bool byValInlinedIntoFrame() override {
+    return false;
+  }
 };
 
 struct VoidPtrAllocaAddrspace final : public VAListInterface {
@@ -153,6 +162,10 @@ struct VoidPtrAllocaAddrspace final : public VAListInterface {
   Value *initializeVAList(LLVMContext &Ctx, IRBuilder<> &Builder,
                           AllocaInst * /*va_list*/, Value *buffer) override {
     return buffer;
+  }
+
+  bool byValInlinedIntoFrame() override {
+    return false;
   }
 };
 
@@ -201,36 +214,59 @@ struct SystemV final : public VAListInterface {
         Builder.CreateInBoundsGEP(VaListTy, VaList, Idxs, "overfow_arg_area"));
 
     Idxs[2] = ConstantInt::get(I32, 3);
-    Builder.CreateStore(
-        ConstantPointerNull::get(PointerType::getUnqual(Ctx)),
+    Builder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(Ctx)),
         Builder.CreateInBoundsGEP(VaListTy, VaList, Idxs, "reg_save_area"));
 
     return VaList;
   }
-};
 
-class VariadicABIInfo {
-
-  VariadicABIInfo(uint32_t MinAlign, uint32_t MaxAlign,
-                  std::unique_ptr<VAListInterface> VAList)
-      : MinAlign(MinAlign), MaxAlign(MaxAlign), VAList(std::move(VAList)) {}
-
-  template <typename T>
-  static VariadicABIInfo create(uint32_t MinAlign, uint32_t MaxAlign) {
-    return {MinAlign, MaxAlign, std::make_unique<T>()};
+  bool byValInlinedIntoFrame() override {
+    return true;
   }
 
+};
+  
+ struct VAArgSlotInfo {
+   // uint32_t MinAlign;
+   // uint32_t MaxAlign;
+  bool Indirect;
+};
+
+
+class VariadicABIInfo {
+  typedef VAArgSlotInfo (*slotInfoTy)(Type *);
+
+  VariadicABIInfo(uint32_t MinAlign, uint32_t MaxAlign,
+                  std::unique_ptr<VAListInterface> VAList,
+                  slotInfoTy slotInfo)
+    : MinAlign(MinAlign), MaxAlign(MaxAlign), VAList(std::move(VAList)), slotInfo(slotInfo) {}
+
+  template <typename T>
+  static VariadicABIInfo create(uint32_t MinAlign, uint32_t MaxAlign, slotInfoTy slotInfo) {
+    return {MinAlign, MaxAlign, std::make_unique<T>(), slotInfo};
+  }
+
+  template </*uint32_t MinAlign,
+              uint32_t MaxAlign,*/
+    bool Indirect>
+  static VAArgSlotInfo constantSlotInfo(Type*)
+  {
+    return {/*MinAlign, MaxAlign,*/ Indirect};
+  }
+  
 public:
   const uint32_t MinAlign;
   const uint32_t MaxAlign;
   std::unique_ptr<VAListInterface> VAList;
+  slotInfoTy slotInfo;
 
-  VariadicABIInfo() : VariadicABIInfo(0, 0, nullptr) {}
+  VariadicABIInfo() : VariadicABIInfo(0, 0, nullptr, nullptr) {}
   explicit operator bool() const { return static_cast<bool>(VAList); }
 
   VariadicABIInfo(VariadicABIInfo &&Self)
       : MinAlign(Self.MinAlign), MaxAlign(Self.MaxAlign),
-        VAList(Self.VAList.release()) {}
+        VAList(Self.VAList.release()),
+        slotInfo(Self.slotInfo) {}
 
   VariadicABIInfo &operator=(VariadicABIInfo &&Other) {
     this->~VariadicABIInfo();
@@ -245,17 +281,34 @@ public:
 
     case Triple::r600:
     case Triple::amdgcn: {
-      return create<VoidPtrAllocaAddrspace>(1, 0);
+      return create<VoidPtrAllocaAddrspace>(1, 0, constantSlotInfo<false>);
     }
 
     case Triple::nvptx:
     case Triple::nvptx64: {
-      return create<VoidPtr>(4, 0);
+      return create<VoidPtr>(4, 0, constantSlotInfo<false>);
     }
 
     case Triple::wasm32:
     case Triple::wasm64: {
-      return create<VoidPtr>(4, 0);
+      return create<VoidPtr>(4, 0,
+                             [](Type* type) -> VAArgSlotInfo {
+                               VAArgSlotInfo res;
+                               res.Indirect = false;
+
+                               // TODO, test empty record
+                               if (auto s = dyn_cast<StructType>(type))
+                                 {
+                                   if (s->getNumElements() > 1) {
+                                     res.Indirect = true;
+                                   }
+                                 }
+                               
+                               
+                               return res;
+                             });
+                             
+
     }
 
     case Triple::x86: {
@@ -267,14 +320,18 @@ public:
         // The slotSize(4) implies a minimum alignment
         // The AllowHigherAlign = true means there is no maximum alignment.
 
-        return create<VoidPtr>(4, 0);
+        return create<VoidPtr>(4, 0, constantSlotInfo<false>);
       }
+      
       if (Triple.getOS() == llvm::Triple::Win32) {
-        return create<VoidPtr>(4, 0);
+        
+        return create<VoidPtr>(4, 0, constantSlotInfo<false>);
       }
 
       if (IsLinuxABI) {
-        return create<VoidPtr>(4, 0);
+        // Indirect is always false, alignment needs some checking
+        // "x86-32 changes the alignment of certain arguments on the stack."
+        return create<VoidPtr>(4, 0, constantSlotInfo<false>);
       }
 
       break;
@@ -285,8 +342,9 @@ public:
         // x64 msvc emit vaarg passes > 8 byte values by pointer
         // however the variadic call instruction created does not, e.g.
         // a <4 x f32> will be passed as itself, not as a pointer or byval.
-        // Postponing resolution of that for now.
+        // This should work now
         // Expected min/max align of 8.
+        // indirect if width > 64 or not a power of two
         return {};
       }
 
@@ -299,11 +357,11 @@ public:
       // This matches clang, not the ABI docs.
 
       if (Triple.isOSDarwin()) {
-        return create<SystemV>(8, 8);
+        return create<SystemV>(8, 0, constantSlotInfo<false>);
       }
 
       if (IsLinuxABI) {
-        return create<SystemV>(8, 8);
+        return create<SystemV>(8, 0, constantSlotInfo<false>);
       }
 
       break;
@@ -338,7 +396,9 @@ public:
   VariadicABIInfo ABI;
 
   ExpandVariadics(ExpandVariadicsMode Mode)
-      : ModulePass(ID), Mode(withCommandLineOverride(Mode)) {}
+    : ModulePass(ID), Mode(withCommandLineOverride(Mode))
+  {
+  }
   StringRef getPassName() const override { return "Expand variadic functions"; }
 
   // Rewrite a variadic call site
@@ -385,7 +445,7 @@ public:
     bool Changed = false;
     const DataLayout &DL = M.getDataLayout();
     if (Function *Intrinsic = getPreexistingDeclaration(&M, ID, {ArgType})) {
-      for (User *U : Intrinsic->users()) {
+      for (User *U : llvm::make_early_inc_range(Intrinsic->users())) {
         if (auto *I = dyn_cast<InstructionType>(U)) {
           Changed |= expandVAIntrinsicCall(Builder, DL, I);
         }
@@ -511,21 +571,31 @@ public:
     // of types for the conversion to a struct type
     enum { N = 4 };
     SmallVector<Type *, N> FieldTypes;
-    enum Tag { IsByVal, NotByVal, Padding };
-    SmallVector<std::pair<Value *, Tag>, N> Fields;
+    enum Tag { Store, Memcpy, Padding };
+    SmallVector<std::tuple<Value *, uint64_t, Tag>, N> Source;
 
-    template <Tag tag> void append(Type *T, Value *V) {
-      FieldTypes.push_back(T);
-      Fields.push_back({V, tag});
+    template <Tag tag> void append(Type *FieldType,  Value *V, uint64_t Bytes) {
+#if 0
+      fprintf(stdout, "\nAppending field type:\n");
+      FieldType->dump(); 
+      fflush(stdout);
+#endif
+      FieldTypes.push_back(FieldType);
+      Source.push_back({V,Bytes,tag});
     }
 
   public:
-    void value(Type *T, Value *V) { append<NotByVal>(T, V); }
 
-    void byVal(Type *T, Value *V) { append<IsByVal>(T, V); }
+    void store(LLVMContext &Ctx,Type *T, Value *V) {
+      append<Store>(T, V, 0);
+    }
 
+    void memcpy(LLVMContext &Ctx,Type *T, Value *V, uint64_t Bytes) {
+      append<Memcpy>(T,  V, Bytes);
+    }
+    
     void padding(LLVMContext &Ctx, uint64_t By) {
-      append<Padding>(ArrayType::get(Type::getInt8Ty(Ctx), By), nullptr);
+      append<Padding>(ArrayType::get(Type::getInt8Ty(Ctx), By), nullptr, 0);
     }
 
     size_t size() const { return FieldTypes.size(); }
@@ -537,24 +607,34 @@ public:
                                 (Twine(Name) + ".vararg").str(), IsPacked);
     }
 
-    void initialiseStructAlloca(const DataLayout &DL, IRBuilder<> &Builder,
+    void initializeStructAlloca(const DataLayout &DL, IRBuilder<> &Builder,
                                 AllocaInst *Alloced) {
 
       StructType *VarargsTy = cast<StructType>(Alloced->getAllocatedType());
 
       for (size_t I = 0; I < size(); I++) {
-        auto [V, tag] = Fields[I];
-        if (!V)
+        
+        auto [V, bytes, tag] = Source[I];
+        
+        if (tag == Padding) {
+          assert(V == nullptr);
           continue;
-
-        auto R = Builder.CreateStructGEP(VarargsTy, Alloced, I);
-        if (tag == IsByVal) {
-          Type *ByValType = FieldTypes[I];
-          Builder.CreateMemCpy(R, {}, V, {},
-                               DL.getTypeAllocSize(ByValType).getFixedValue());
-        } else {
-          Builder.CreateStore(V, R);
         }
+
+        auto Dst = Builder.CreateStructGEP(VarargsTy, Alloced, I);
+
+        if (tag == Store) {
+          assert(V != nullptr);
+          Builder.CreateStore(V, Dst);
+          continue;
+        }
+
+        if (tag == Memcpy) {
+          assert(V != nullptr);
+          Builder.CreateMemCpy(Dst, {}, V, {}, bytes);
+          continue;
+        }
+
       }
     }
   };
@@ -562,9 +642,11 @@ public:
 
 bool ExpandVariadics::runOnModule(Module &M) {
   bool Changed = false;
+
+  
   if (Mode == ExpandVariadicsMode::Disable)
     return Changed;
-
+  
   llvm::Triple Triple(M.getTargetTriple());
 
   if (Triple.getArch() == Triple::UnknownArch) {
@@ -638,7 +720,7 @@ bool ExpandVariadics::runOnModule(Module &M) {
       }
     }
   }
-
+  
   return Changed;
 }
 
@@ -828,7 +910,7 @@ ExpandVariadics::deriveFixedArityReplacement(Module &M, IRBuilder<> &Builder,
   //  NF->setLinkage(GlobalValue::InternalLinkage);
 
   AttrBuilder ParamAttrs(Ctx);
-  ParamAttrs.addAttribute(Attribute::NoAlias); // which attr is this changing?
+  // ParamAttrs.addAttribute(Attribute::NoAlias); // which attr is this changing?
 
   // TODO: When can the va_list argument have addAlignmentAttr called on it?
   // It improves codegen lot in the non-inlined case. Probably target
@@ -933,19 +1015,67 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
   Align MaxFieldAlign(ABI.MinAlign ? ABI.MinAlign : 1);
 
   // The strategy here is to allocate a call frame containing the variadic
-  // arguments laid out such that a target specific va_list can be initialised
+  // arguments laid out such that a target specific va_list can be initialized
   // with it, such that target specific va_arg instructions will correctly
   // iterate over it. Primarily this means getting the alignment right.
 
+  Function *CBF = CB->getParent()->getParent();
+                                 
   ExpandedCallFrame Frame;
 
   uint64_t CurrentOffset = 0;
+
+#if 0
+  fprintf(stdout, "Frame building time\n");
+  unsigned counter = 0;
+#endif
+
+  if (!ABI.slotInfo) {
+    report_fatal_error("Missing slotInfo");
+  }
+  
   for (unsigned I = FuncType->getNumParams(), E = CB->arg_size(); I < E; ++I) {
     Value *ArgVal = CB->getArgOperand(I);
     bool IsByVal = CB->paramHasAttr(I, Attribute::ByVal);
-    Type *ArgType = IsByVal ? CB->getParamByValType(I) : ArgVal->getType();
-    Align DataAlign = DL.getABITypeAlign(ArgType);
 
+    // The call argument is either passed by value, or is a pointer passed byval
+    // The varargs frame either stores the value directly or a pointer to it
+    
+    // The type of the value being passed, decoded from byval metadata if required
+    Type * const UnderlyingType = IsByVal ? CB->getParamByValType(I) : ArgVal->getType();
+    const uint64_t UnderlyingSize = DL.getTypeAllocSize(UnderlyingType).getFixedValue();
+
+    
+    // The type to be written into the call frame
+    Type *FrameFieldType = UnderlyingType;
+
+    // The value to copy from when initialising the frame alloca
+    Value *SourceValue = ArgVal;
+
+    VAArgSlotInfo slotInfo = ABI.slotInfo(UnderlyingType);
+    
+    if (slotInfo.Indirect) {
+      // The va_arg lowering loads through a pointer. Set up an alloca to aim that pointer at.
+      Builder.SetInsertPointPastAllocas(CBF);
+      Builder.SetCurrentDebugLocation(CB->getStableDebugLoc());
+      Value *CallerCopy = Builder.CreateAlloca(UnderlyingType, nullptr, "IndirectAlloca");
+
+      Builder.SetInsertPoint(CB);
+      if (IsByVal)
+        Builder.CreateMemCpy(CallerCopy, {}, ArgVal, {},                               
+                             UnderlyingSize);
+      else  
+        Builder.CreateStore(ArgVal, CallerCopy);
+
+      // Indirection now handled, pass the alloca ptr by value
+      FrameFieldType = DL.getAllocaPtrType(Ctx);
+      SourceValue = CallerCopy;
+    }
+    
+
+    // Alignment of the value within the frame
+    // This probably needs to be controllable as a function of type
+    Align DataAlign = DL.getABITypeAlign(FrameFieldType);
     uint64_t DataAlignV = DataAlign.value();
 
     // Currently using 0 as a sentinel to mean ignored
@@ -964,12 +1094,21 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
       CurrentOffset += Padding;
     }
 
-    if (IsByVal) {
-      Frame.byVal(ArgType, ArgVal);
-    } else {
-      Frame.value(ArgType, ArgVal);
-    }
-    CurrentOffset += DL.getTypeAllocSize(ArgType).getFixedValue();
+
+    if (slotInfo.Indirect)
+      {        
+        Frame.store(Ctx, FrameFieldType, SourceValue);
+      }
+    else
+      {
+        if (IsByVal) {
+          Frame.memcpy(Ctx, FrameFieldType, SourceValue, UnderlyingSize);
+        } else {
+          Frame.store(Ctx, FrameFieldType, SourceValue);
+        }
+      }
+    
+    CurrentOffset += DL.getTypeAllocSize(FrameFieldType).getFixedValue();
   }
 
   if (Frame.empty()) {
@@ -980,16 +1119,8 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
     Frame.padding(Ctx, 1);
   }
 
-  Function *CBF = CB->getParent()->getParent();
 
   StructType *VarargsTy = Frame.asStruct(Ctx, CBF->getName());
-
-  // Put the alloca to hold the variadic args in the entry basic block.
-  // The clumsy construction is to set a the alignment on the instance
-  Builder.SetInsertPointPastAllocas(CBF);
-  Builder.SetCurrentDebugLocation(
-      CB->getStableDebugLoc()); // some set insert points write to this, some
-                                // dont
 
   // The struct instance needs to be at least MaxFieldAlign for the alignment of
   // the fields to be correct at runtime. Use the native stack alignment instead
@@ -1000,25 +1131,31 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
     AllocaAlign = std::max(AllocaAlign, DL.getStackAlignment());
   }
 
+
+  // Put the alloca to hold the variadic args in the entry basic block.
+  Builder.SetInsertPointPastAllocas(CBF);
+  Builder.SetCurrentDebugLocation(CB->getStableDebugLoc());
+
+  // The clumsy construction is to set the alignment on the instance
   AllocaInst *Alloced = Builder.Insert(
       new AllocaInst(VarargsTy, DL.getAllocaAddrSpace(), nullptr, AllocaAlign),
       "vararg_buffer");
   Changed = true;
   assert(Alloced->getAllocatedType() == VarargsTy);
 
-  // Initialise the fields in the struct
+  // Initialize the fields in the struct
   Builder.SetInsertPoint(CB);
 
   Builder.CreateLifetimeStart(Alloced, sizeOfAlloca(Ctx, DL, Alloced));
 
-  Frame.initialiseStructAlloca(DL, Builder, Alloced);
+  Frame.initializeStructAlloca(DL, Builder, Alloced);
 
   unsigned NumArgs = FuncType->getNumParams();
 
   SmallVector<Value *> Args;
   Args.assign(CB->arg_begin(), CB->arg_begin() + NumArgs);
 
-  // Initialise a va_list pointing to that struct and pass it as the last
+  // Initialize a va_list pointing to that struct and pass it as the last
   // argument
   AllocaInst *VaList = nullptr;
   {
@@ -1064,7 +1201,7 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
     // might want to guard this with arch, x64 and aarch64 document that
     // varargs can't be tail called anyway
     // Not totally convinced this is necessary but dead store elimination
-    // will discard the stores to the Alloca and pass uninitialised memory along
+    // will discard the stores to the Alloca and pass uninitialized memory along
     // instead when the function is marked tailcall
     if (TCK == CallInst::TCK_Tail) {
       TCK = CallInst::TCK_None;
@@ -1162,7 +1299,10 @@ PreservedAnalyses ExpandVariadicsPass::run(Module &M, ModuleAnalysisManager &) {
 ExpandVariadicsPass::ExpandVariadicsPass(OptimizationLevel Level)
     : ExpandVariadicsPass(Level == OptimizationLevel::O0
                               ? ExpandVariadicsMode::Disable
-                              : ExpandVariadicsMode::Optimize) {}
+                          : ExpandVariadicsMode::Optimize)
+{
+}
 
 ExpandVariadicsPass::ExpandVariadicsPass(ExpandVariadicsMode Mode)
-    : ConstructedMode(Mode) {}
+  : ConstructedMode(Mode) {
+}

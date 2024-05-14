@@ -4,7 +4,25 @@
 class A {
 public:
   int x;
+// CHECK-LABEL: @_ZN1AC1Ev(
+// CHECK-NEXT:  entry:
+// CHECK-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, align 8, addrspace(5)
+// CHECK-NEXT:    [[THIS_ADDR_ASCAST:%.*]] = addrspacecast ptr addrspace(5) [[THIS_ADDR]] to ptr
+// CHECK-NEXT:    store ptr [[THIS:%.*]], ptr [[THIS_ADDR_ASCAST]], align 8
+// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR_ASCAST]], align 8
+// CHECK-NEXT:    call void @_ZN1AC2Ev(ptr noundef nonnull align 4 dereferenceable(4) [[THIS1]])
+// CHECK-NEXT:    ret void
+//
   A():x(0) {}
+// CHECK-LABEL: @_ZN1AD1Ev(
+// CHECK-NEXT:  entry:
+// CHECK-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, align 8, addrspace(5)
+// CHECK-NEXT:    [[THIS_ADDR_ASCAST:%.*]] = addrspacecast ptr addrspace(5) [[THIS_ADDR]] to ptr
+// CHECK-NEXT:    store ptr [[THIS:%.*]], ptr [[THIS_ADDR_ASCAST]], align 8
+// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR_ASCAST]], align 8
+// CHECK-NEXT:    call void @_ZN1AD2Ev(ptr noundef nonnull align 4 dereferenceable(4) [[THIS1]]) #[[ATTR2:[0-9]+]]
+// CHECK-NEXT:    ret void
+//
   ~A() {}
 };
 
@@ -43,9 +61,9 @@ void func_with_indirect_arg(A a) {
 // CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i64(ptr align 4 [[AGG_TMP_ASCAST]], ptr align 4 [[A_ASCAST]], i64 4, i1 false)
 // CHECK-NEXT:    [[AGG_TMP_ASCAST_ASCAST:%.*]] = addrspacecast ptr [[AGG_TMP_ASCAST]] to ptr addrspace(5)
 // CHECK-NEXT:    call void @_Z22func_with_indirect_arg1A(ptr addrspace(5) noundef [[AGG_TMP_ASCAST_ASCAST]])
-// CHECK-NEXT:    call void @_ZN1AD1Ev(ptr noundef nonnull align 4 dereferenceable(4) [[AGG_TMP_ASCAST]])
+// CHECK-NEXT:    call void @_ZN1AD1Ev(ptr noundef nonnull align 4 dereferenceable(4) [[AGG_TMP_ASCAST]]) #[[ATTR2]]
 // CHECK-NEXT:    call void @_Z17func_with_ref_argR1A(ptr noundef nonnull align 4 dereferenceable(4) [[A_ASCAST]])
-// CHECK-NEXT:    call void @_ZN1AD1Ev(ptr noundef nonnull align 4 dereferenceable(4) [[A_ASCAST]])
+// CHECK-NEXT:    call void @_ZN1AD1Ev(ptr noundef nonnull align 4 dereferenceable(4) [[A_ASCAST]]) #[[ATTR2]]
 // CHECK-NEXT:    ret void
 //
 void test_indirect_arg_auto() {
@@ -61,7 +79,7 @@ void test_indirect_arg_auto() {
 // CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i64(ptr align 4 [[AGG_TMP_ASCAST]], ptr align 4 addrspacecast (ptr addrspace(1) @g_a to ptr), i64 4, i1 false)
 // CHECK-NEXT:    [[AGG_TMP_ASCAST_ASCAST:%.*]] = addrspacecast ptr [[AGG_TMP_ASCAST]] to ptr addrspace(5)
 // CHECK-NEXT:    call void @_Z22func_with_indirect_arg1A(ptr addrspace(5) noundef [[AGG_TMP_ASCAST_ASCAST]])
-// CHECK-NEXT:    call void @_ZN1AD1Ev(ptr noundef nonnull align 4 dereferenceable(4) [[AGG_TMP_ASCAST]])
+// CHECK-NEXT:    call void @_ZN1AD1Ev(ptr noundef nonnull align 4 dereferenceable(4) [[AGG_TMP_ASCAST]]) #[[ATTR2]]
 // CHECK-NEXT:    call void @_Z17func_with_ref_argR1A(ptr noundef nonnull align 4 dereferenceable(4) addrspacecast (ptr addrspace(1) @g_a to ptr))
 // CHECK-NEXT:    ret void
 //

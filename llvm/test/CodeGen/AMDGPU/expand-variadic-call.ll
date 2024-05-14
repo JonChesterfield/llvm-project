@@ -66,7 +66,7 @@ declare hidden void @valist(ptr noundef)
 declare void @llvm.lifetime.end.p5(i64 immarg, ptr addrspace(5) nocapture) #0
 
 define hidden void @start_once(...) {
-; CHECK-LABEL: define {{[^@]+}}@start_once(ptr addrspace(5) noalias %varargs) {
+; CHECK-LABEL: define {{[^@]+}}@start_once(ptr addrspace(5) %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s = alloca ptr, align 8, addrspace(5)
 ; CHECK-NEXT:    %s.ascast = addrspacecast ptr addrspace(5) %s to ptr
@@ -94,7 +94,7 @@ declare void @llvm.va_start.p0(ptr) #1
 declare void @llvm.va_end.p0(ptr) #1
 
 define hidden void @start_twice(...) {
-; CHECK-LABEL: define {{[^@]+}}@start_twice(ptr addrspace(5) noalias %varargs) {
+; CHECK-LABEL: define {{[^@]+}}@start_twice(ptr addrspace(5) %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s0 = alloca ptr, align 8, addrspace(5)
 ; CHECK-NEXT:    %s1 = alloca ptr, align 8, addrspace(5)

@@ -14,13 +14,15 @@ target triple = "x86_64-apple-macosx10.4.0"
 ; CHECK: %single_v32f32.vararg = type <{ <32 x float> }>
 ; CHECK: %i32_double.vararg = type <{ i32, [4 x i8], double }>
 ; CHECK: %double_i32.vararg = type <{ double, i32 }>
-; CHECK: %i32_v4f32.vararg = type <{ i32, [4 x i8], <4 x float> }>
+; CHECK: %i32_libcS.vararg = type <{ i32, [4 x i8], %struct.libcS }>
+; CHECK: %libcS_i32.vararg = type <{ %struct.libcS, i32 }>
+; CHECK: %i32_v4f32.vararg = type <{ i32, [12 x i8], <4 x float> }>
 ; CHECK: %v4f32_i32.vararg = type <{ <4 x float>, i32 }>
-; CHECK: %i32_v8f32.vararg = type <{ i32, [4 x i8], <8 x float> }>
+; CHECK: %i32_v8f32.vararg = type <{ i32, [28 x i8], <8 x float> }>
 ; CHECK: %v8f32_i32.vararg = type <{ <8 x float>, i32 }>
-; CHECK: %i32_v16f32.vararg = type <{ i32, [4 x i8], <16 x float> }>
+; CHECK: %i32_v16f32.vararg = type <{ i32, [60 x i8], <16 x float> }>
 ; CHECK: %v16f32_i32.vararg = type <{ <16 x float>, i32 }>
-; CHECK: %i32_v32f32.vararg = type <{ i32, [4 x i8], <32 x float> }>
+; CHECK: %i32_v32f32.vararg = type <{ i32, [124 x i8], <32 x float> }>
 ; CHECK: %v32f32_i32.vararg = type <{ <32 x float>, i32 }>
 
 %struct.__va_list_tag = type { i32, i32, ptr, ptr }
@@ -54,7 +56,7 @@ declare void @valist(ptr noundef)
 declare void @llvm.lifetime.end.p0(i64 immarg, ptr nocapture) #0
 
 define void @start_once(...) {
-; CHECK-LABEL: define {{[^@]+}}@start_once(ptr noalias %varargs) {
+; CHECK-LABEL: define {{[^@]+}}@start_once(ptr %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s = alloca [1 x %struct.__va_list_tag], align 16
 ; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 24, ptr nonnull %s) #3
@@ -78,7 +80,7 @@ declare void @llvm.va_start.p0(ptr) #1
 declare void @llvm.va_end.p0(ptr) #1
 
 define void @start_twice(...) {
-; CHECK-LABEL: define {{[^@]+}}@start_twice(ptr noalias %varargs) {
+; CHECK-LABEL: define {{[^@]+}}@start_twice(ptr %varargs) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %s0 = alloca [1 x %struct.__va_list_tag], align 16
 ; CHECK-NEXT:    %s1 = alloca [1 x %struct.__va_list_tag], align 16
@@ -195,7 +197,7 @@ define void @single_v8f32(ptr nocapture noundef readonly byval(<8 x float>) alig
 ; CHECK-LABEL: define {{[^@]+}}@single_v8f32(ptr nocapture noundef readonly byval(<8 x float>) align 16 %0) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <8 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %single_v8f32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %single_v8f32.vararg, align 32
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %x = load <8 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <8 x float> %x, ptr %indirect-arg-temp, align 16, !tbaa !3
@@ -228,7 +230,7 @@ define void @single_v16f32(ptr nocapture noundef readonly byval(<16 x float>) al
 ; CHECK-LABEL: define {{[^@]+}}@single_v16f32(ptr nocapture noundef readonly byval(<16 x float>) align 16 %0) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <16 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %single_v16f32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %single_v16f32.vararg, align 64
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %x = load <16 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <16 x float> %x, ptr %indirect-arg-temp, align 16, !tbaa !3
@@ -261,7 +263,7 @@ define void @single_v32f32(ptr nocapture noundef readonly byval(<32 x float>) al
 ; CHECK-LABEL: define {{[^@]+}}@single_v32f32(ptr nocapture noundef readonly byval(<32 x float>) align 16 %0) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <32 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %single_v32f32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %single_v32f32.vararg, align 128
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %x = load <32 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <32 x float> %x, ptr %indirect-arg-temp, align 16, !tbaa !3
@@ -411,7 +413,7 @@ define void @i32_v4f32(i32 noundef %x, <4 x float> noundef %y) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %vararg_buffer = alloca %i32_v4f32.vararg, align 16
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 24, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 32, ptr %vararg_buffer)
 ; CHECK-NEXT:    %0 = getelementptr inbounds %i32_v4f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr %0, align 4
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v4f32.vararg, ptr %vararg_buffer, i32 0, i32 2
@@ -427,7 +429,7 @@ define void @i32_v4f32(i32 noundef %x, <4 x float> noundef %y) {
 ; CHECK-NEXT:    store ptr null, ptr %reg_save_area, align 8
 ; CHECK-NEXT:    call void @vararg(ptr %va_list) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 24, ptr %va_list)
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 24, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 32, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -468,11 +470,11 @@ define void @i32_v8f32(i32 noundef %x, ptr nocapture noundef readonly byval(<8 x
 ; CHECK-LABEL: define {{[^@]+}}@i32_v8f32(i32 noundef %x, ptr nocapture noundef readonly byval(<8 x float>) align 16 %0) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <8 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %i32_v8f32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %i32_v8f32.vararg, align 32
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %y = load <8 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <8 x float> %y, ptr %indirect-arg-temp, align 16, !tbaa !3
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 40, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 64, ptr %vararg_buffer)
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v8f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr %1, align 4
 ; CHECK-NEXT:    %2 = getelementptr inbounds %i32_v8f32.vararg, ptr %vararg_buffer, i32 0, i32 2
@@ -488,7 +490,7 @@ define void @i32_v8f32(i32 noundef %x, ptr nocapture noundef readonly byval(<8 x
 ; CHECK-NEXT:    store ptr null, ptr %reg_save_area, align 8
 ; CHECK-NEXT:    call void @vararg(ptr %va_list) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 24, ptr %va_list)
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 40, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 64, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -503,7 +505,7 @@ define void @v8f32_i32(ptr nocapture noundef readonly byval(<8 x float>) align 1
 ; CHECK-LABEL: define {{[^@]+}}@v8f32_i32(ptr nocapture noundef readonly byval(<8 x float>) align 16 %0, i32 noundef %y) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <8 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %v8f32_i32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %v8f32_i32.vararg, align 32
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %x = load <8 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <8 x float> %x, ptr %indirect-arg-temp, align 16, !tbaa !3
@@ -538,11 +540,11 @@ define void @i32_v16f32(i32 noundef %x, ptr nocapture noundef readonly byval(<16
 ; CHECK-LABEL: define {{[^@]+}}@i32_v16f32(i32 noundef %x, ptr nocapture noundef readonly byval(<16 x float>) align 16 %0) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <16 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %i32_v16f32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %i32_v16f32.vararg, align 64
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %y = load <16 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <16 x float> %y, ptr %indirect-arg-temp, align 16, !tbaa !3
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 72, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 128, ptr %vararg_buffer)
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v16f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr %1, align 4
 ; CHECK-NEXT:    %2 = getelementptr inbounds %i32_v16f32.vararg, ptr %vararg_buffer, i32 0, i32 2
@@ -558,7 +560,7 @@ define void @i32_v16f32(i32 noundef %x, ptr nocapture noundef readonly byval(<16
 ; CHECK-NEXT:    store ptr null, ptr %reg_save_area, align 8
 ; CHECK-NEXT:    call void @vararg(ptr %va_list) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 24, ptr %va_list)
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 72, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 128, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -573,7 +575,7 @@ define void @v16f32_i32(ptr nocapture noundef readonly byval(<16 x float>) align
 ; CHECK-LABEL: define {{[^@]+}}@v16f32_i32(ptr nocapture noundef readonly byval(<16 x float>) align 16 %0, i32 noundef %y) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <16 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %v16f32_i32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %v16f32_i32.vararg, align 64
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %x = load <16 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <16 x float> %x, ptr %indirect-arg-temp, align 16, !tbaa !3
@@ -608,11 +610,11 @@ define void @i32_v32f32(i32 noundef %x, ptr nocapture noundef readonly byval(<32
 ; CHECK-LABEL: define {{[^@]+}}@i32_v32f32(i32 noundef %x, ptr nocapture noundef readonly byval(<32 x float>) align 16 %0) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <32 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %i32_v32f32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %i32_v32f32.vararg, align 128
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %y = load <32 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <32 x float> %y, ptr %indirect-arg-temp, align 16, !tbaa !3
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 136, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 256, ptr %vararg_buffer)
 ; CHECK-NEXT:    %1 = getelementptr inbounds %i32_v32f32.vararg, ptr %vararg_buffer, i32 0, i32 0
 ; CHECK-NEXT:    store i32 %x, ptr %1, align 4
 ; CHECK-NEXT:    %2 = getelementptr inbounds %i32_v32f32.vararg, ptr %vararg_buffer, i32 0, i32 2
@@ -628,7 +630,7 @@ define void @i32_v32f32(i32 noundef %x, ptr nocapture noundef readonly byval(<32
 ; CHECK-NEXT:    store ptr null, ptr %reg_save_area, align 8
 ; CHECK-NEXT:    call void @vararg(ptr %va_list) #3
 ; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 24, ptr %va_list)
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 136, ptr %vararg_buffer)
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 256, ptr %vararg_buffer)
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -643,7 +645,7 @@ define void @v32f32_i32(ptr nocapture noundef readonly byval(<32 x float>) align
 ; CHECK-LABEL: define {{[^@]+}}@v32f32_i32(ptr nocapture noundef readonly byval(<32 x float>) align 16 %0, i32 noundef %y) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    %indirect-arg-temp = alloca <32 x float>, align 16
-; CHECK-NEXT:    %vararg_buffer = alloca %v32f32_i32.vararg, align 16
+; CHECK-NEXT:    %vararg_buffer = alloca %v32f32_i32.vararg, align 128
 ; CHECK-NEXT:    %va_list = alloca [1 x { i32, i32, ptr, ptr }], align 8
 ; CHECK-NEXT:    %x = load <32 x float>, ptr %0, align 16, !tbaa !3
 ; CHECK-NEXT:    store <32 x float> %x, ptr %indirect-arg-temp, align 16, !tbaa !3
