@@ -3,7 +3,7 @@
 # These are local-machine specific
 SOURCE=~/llvm-project
 BUILD=~/llvm-build/llvm
-OUTPUT=$SOURCE/profile
+OUTPUT=$SOURCE/docs
 
 rm -rf -- $OUTPUT/opt $OUTPUT/clang $OUTPUT/llc
 

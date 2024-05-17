@@ -1,0 +1,1104 @@
+<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='../../../../../../../../style.css'></head><body><h2>Coverage Report</h2><h4>Created: 2024-05-17 10:13</h4><div class='centered'><table><div class='source-name-title'><pre>/home/jon/llvm-project/llvm/lib/Target/PowerPC/PPCRegisterInfo.h</pre></div><tr><td><pre>Line</pre></td><td><pre>Count</pre></td><td><pre>Source (<a href='#L49'>jump to first uncovered line</a>)</pre></td></td></tr><tr><td class='line-number'><a name='L1' href='#L1'><pre>1</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//===-- PPCRegisterInfo.h - PowerPC Register Information Impl ---*- C++ -*-===//</pre></td></tr><tr><td class='line-number'><a name='L2' href='#L2'><pre>2</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//</pre></td></tr><tr><td class='line-number'><a name='L3' href='#L3'><pre>3</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.</pre></td></tr><tr><td class='line-number'><a name='L4' href='#L4'><pre>4</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// See https://llvm.org/LICENSE.txt for license information.</pre></td></tr><tr><td class='line-number'><a name='L5' href='#L5'><pre>5</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception</pre></td></tr><tr><td class='line-number'><a name='L6' href='#L6'><pre>6</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//</pre></td></tr><tr><td class='line-number'><a name='L7' href='#L7'><pre>7</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//===----------------------------------------------------------------------===//</pre></td></tr><tr><td class='line-number'><a name='L8' href='#L8'><pre>8</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//</pre></td></tr><tr><td class='line-number'><a name='L9' href='#L9'><pre>9</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// This file contains the PowerPC implementation of the TargetRegisterInfo</pre></td></tr><tr><td class='line-number'><a name='L10' href='#L10'><pre>10</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>// class.</pre></td></tr><tr><td class='line-number'><a name='L11' href='#L11'><pre>11</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//</pre></td></tr><tr><td class='line-number'><a name='L12' href='#L12'><pre>12</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>//===----------------------------------------------------------------------===//</pre></td></tr><tr><td class='line-number'><a name='L13' href='#L13'><pre>13</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L14' href='#L14'><pre>14</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>#ifndef LLVM_LIB_TARGET_POWERPC_PPCREGISTERINFO_H</pre></td></tr><tr><td class='line-number'><a name='L15' href='#L15'><pre>15</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>#define LLVM_LIB_TARGET_POWERPC_PPCREGISTERINFO_H</pre></td></tr><tr><td class='line-number'><a name='L16' href='#L16'><pre>16</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L17' href='#L17'><pre>17</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>#include &quot;MCTargetDesc/PPCMCTargetDesc.h&quot;</pre></td></tr><tr><td class='line-number'><a name='L18' href='#L18'><pre>18</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>#include &quot;llvm/ADT/DenseMap.h&quot;</pre></td></tr><tr><td class='line-number'><a name='L19' href='#L19'><pre>19</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L20' href='#L20'><pre>20</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>#define GET_REGINFO_HEADER</pre></td></tr><tr><td class='line-number'><a name='L21' href='#L21'><pre>21</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>#include &quot;PPCGenRegisterInfo.inc&quot;</pre></td></tr><tr><td class='line-number'><a name='L22' href='#L22'><pre>22</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L23' href='#L23'><pre>23</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>namespace llvm {</pre></td></tr><tr><td class='line-number'><a name='L24' href='#L24'><pre>24</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>class PPCTargetMachine;</pre></td></tr><tr><td class='line-number'><a name='L25' href='#L25'><pre>25</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L26' href='#L26'><pre>26</pre></a></td><td class='covered-line'><pre>1.21k</pre></td><td class='code'><pre>inline static unsigned getCRFromCRBit(unsigned SrcReg) {</pre></td></tr><tr><td class='line-number'><a name='L27' href='#L27'><pre>27</pre></a></td><td class='covered-line'><pre>1.21k</pre></td><td class='code'><pre>  unsigned Reg = 0;</pre></td></tr><tr><td class='line-number'><a name='L28' href='#L28'><pre>28</pre></a></td><td class='covered-line'><pre>1.21k</pre></td><td class='code'><pre>  if (SrcReg == PPC::CR0LT || <div class='tooltip'>SrcReg == PPC::CR0GT<span class='tooltip-content'>1.19k</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>5</span>]
+  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:31</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>5</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:7</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>59</span>]
+  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:31</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>1</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>14</span>, <span class='None'>False</span>: <span class='covered-line'>1.13k</span>]
+  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:31</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>276</span>, <span class='None'>False</span>: <span class='covered-line'>855</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L29' href='#L29'><pre>29</pre></a></td><td class='covered-line'><pre>1.21k</pre></td><td class='code'><pre>      <div class='tooltip'>SrcReg == PPC::CR0EQ<span class='tooltip-content'>918</span></div> || <div class='tooltip'>SrcReg == PPC::CR0UN<span class='tooltip-content'>606</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>5</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:31</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:7</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:31</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>307</span>, <span class='None'>False</span>: <span class='covered-line'>548</span>]
+  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:31</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>544</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L28'><span>28:7</span></a></span>) to (<span class='line-number'><a href='#L28'><span>29:51</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (28:7)
+     Condition C2 --> (28:31)
+     Condition C3 --> (29:7)
+     Condition C4 --> (29:31)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { T,  -,  -,  -  = T      }
+  2 { F,  F,  T,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L28'><span>28:7</span></a></span>) to (<span class='line-number'><a href='#L28'><span>29:51</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (28:7)
+     Condition C2 --> (28:31)
+     Condition C3 --> (29:7)
+     Condition C4 --> (29:31)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: covered: (1,2)
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 25.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L28'><span>28:7</span></a></span>) to (<span class='line-number'><a href='#L28'><span>29:51</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (28:7)
+     Condition C2 --> (28:31)
+     Condition C3 --> (29:7)
+     Condition C4 --> (29:31)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  F,  T  = T      }
+  4 { F,  F,  T,  -  = T      }
+  5 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,5)
+  C3-Pair: covered: (1,4)
+  C4-Pair: covered: (1,3)
+  MC/DC Coverage for Expression: 100.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L30' href='#L30'><pre>30</pre></a></td><td class='covered-line'><pre>611</pre></td><td class='code'><pre>    Reg = PPC::CR0;</pre></td></tr><tr><td class='line-number'><a name='L31' href='#L31'><pre>31</pre></a></td><td class='covered-line'><pre>602</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR1LT || SrcReg == PPC::CR1GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>1</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>544</span>]
+  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>1</span>, <span class='None'>False</span>: <span class='covered-line'>543</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L32' href='#L32'><pre>32</pre></a></td><td class='covered-line'><pre>602</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR1EQ<span class='tooltip-content'>600</span></div> || <div class='tooltip'>SrcReg == PPC::CR1UN<span class='tooltip-content'>593</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>7</span>, <span class='None'>False</span>: <span class='covered-line'>536</span>]
+  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>536</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L31'><span>31:12</span></a></span>) to (<span class='line-number'><a href='#L31'><span>32:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (31:12)
+     Condition C2 --> (31:36)
+     Condition C3 --> (32:12)
+     Condition C4 --> (32:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L31'><span>31:12</span></a></span>) to (<span class='line-number'><a href='#L31'><span>32:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (31:12)
+     Condition C2 --> (31:36)
+     Condition C3 --> (32:12)
+     Condition C4 --> (32:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: covered: (1,2)
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 25.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L31'><span>31:12</span></a></span>) to (<span class='line-number'><a href='#L31'><span>32:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (31:12)
+     Condition C2 --> (31:36)
+     Condition C3 --> (32:12)
+     Condition C4 --> (32:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  F,  T,  -  = T      }
+  3 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: covered: (1,3)
+  C3-Pair: covered: (1,2)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 50.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L33' href='#L33'><pre>33</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>    Reg = PPC::CR1;</pre></td></tr><tr><td class='line-number'><a name='L34' href='#L34'><pre>34</pre></a></td><td class='covered-line'><pre>593</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR2LT || <div class='tooltip'>SrcReg == PPC::CR2GT<span class='tooltip-content'>564</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>29</span>, <span class='None'>False</span>: <span class='covered-line'>507</span>]
+  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>503</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L35' href='#L35'><pre>35</pre></a></td><td class='covered-line'><pre>593</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR2EQ<span class='tooltip-content'>560</span></div> || <div class='tooltip'>SrcReg == PPC::CR2UN<span class='tooltip-content'>549</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>6</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>11</span>, <span class='None'>False</span>: <span class='covered-line'>492</span>]
+  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>3</span>, <span class='None'>False</span>: <span class='covered-line'>489</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L34'><span>34:12</span></a></span>) to (<span class='line-number'><a href='#L34'><span>35:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (34:12)
+     Condition C2 --> (34:36)
+     Condition C3 --> (35:12)
+     Condition C4 --> (35:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L34'><span>34:12</span></a></span>) to (<span class='line-number'><a href='#L34'><span>35:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (34:12)
+     Condition C2 --> (34:36)
+     Condition C3 --> (35:12)
+     Condition C4 --> (35:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  F,  F,  T  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: covered: (1,2)
+  MC/DC Coverage for Expression: 25.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L34'><span>34:12</span></a></span>) to (<span class='line-number'><a href='#L34'><span>35:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (34:12)
+     Condition C2 --> (34:36)
+     Condition C3 --> (35:12)
+     Condition C4 --> (35:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  F,  T  = T      }
+  4 { F,  F,  T,  -  = T      }
+  5 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,5)
+  C3-Pair: covered: (1,4)
+  C4-Pair: covered: (1,3)
+  MC/DC Coverage for Expression: 100.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L36' href='#L36'><pre>36</pre></a></td><td class='covered-line'><pre>53</pre></td><td class='code'><pre>    Reg = PPC::CR2;</pre></td></tr><tr><td class='line-number'><a name='L37' href='#L37'><pre>37</pre></a></td><td class='covered-line'><pre>540</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR3LT || <div class='tooltip'>SrcReg == PPC::CR3GT<span class='tooltip-content'>538</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>2</span>, <span class='None'>False</span>: <span class='covered-line'>487</span>]
+  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>487</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L38' href='#L38'><pre>38</pre></a></td><td class='covered-line'><pre>540</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR3EQ<span class='tooltip-content'>538</span></div> || <div class='tooltip'>SrcReg == PPC::CR3UN<span class='tooltip-content'>534</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L37'><span>37:12</span></a></span>) to (<span class='line-number'><a href='#L37'><span>38:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (37:12)
+     Condition C2 --> (37:36)
+     Condition C3 --> (38:12)
+     Condition C4 --> (38:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L37'><span>37:12</span></a></span>) to (<span class='line-number'><a href='#L37'><span>38:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (37:12)
+     Condition C2 --> (37:36)
+     Condition C3 --> (38:12)
+     Condition C4 --> (38:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L37'><span>37:12</span></a></span>) to (<span class='line-number'><a href='#L37'><span>38:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (37:12)
+     Condition C2 --> (37:36)
+     Condition C3 --> (38:12)
+     Condition C4 --> (38:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  T,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: not covered
+  C3-Pair: covered: (1,3)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 50.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L39' href='#L39'><pre>39</pre></a></td><td class='covered-line'><pre>6</pre></td><td class='code'><pre>    Reg = PPC::CR3;</pre></td></tr><tr><td class='line-number'><a name='L40' href='#L40'><pre>40</pre></a></td><td class='covered-line'><pre>534</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR4LT || SrcReg == PPC::CR4GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L41' href='#L41'><pre>41</pre></a></td><td class='covered-line'><pre>534</pre></td><td class='code'><pre>           SrcReg == PPC::CR4EQ || <div class='tooltip'>SrcReg == PPC::CR4UN<span class='tooltip-content'>528</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>6</span>, <span class='None'>False</span>: <span class='covered-line'>477</span>]
+  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>477</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L40'><span>40:12</span></a></span>) to (<span class='line-number'><a href='#L40'><span>41:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (40:12)
+     Condition C2 --> (40:36)
+     Condition C3 --> (41:12)
+     Condition C4 --> (41:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L40'><span>40:12</span></a></span>) to (<span class='line-number'><a href='#L40'><span>41:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (40:12)
+     Condition C2 --> (40:36)
+     Condition C3 --> (41:12)
+     Condition C4 --> (41:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L40'><span>40:12</span></a></span>) to (<span class='line-number'><a href='#L40'><span>41:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (40:12)
+     Condition C2 --> (40:36)
+     Condition C3 --> (41:12)
+     Condition C4 --> (41:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  F,  T,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: covered: (1,2)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 25.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L42' href='#L42'><pre>42</pre></a></td><td class='covered-line'><pre>6</pre></td><td class='code'><pre>    Reg = PPC::CR4;</pre></td></tr><tr><td class='line-number'><a name='L43' href='#L43'><pre>43</pre></a></td><td class='covered-line'><pre>528</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR5LT || <div class='tooltip'>SrcReg == PPC::CR5GT<span class='tooltip-content'>24</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>47</span>, <span class='None'>False</span>: <span class='covered-line'>4</span>]
+  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>457</span>, <span class='None'>False</span>: <span class='covered-line'>20</span>]
+  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>9</span>, <span class='None'>False</span>: <span class='covered-line'>11</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L44' href='#L44'><pre>44</pre></a></td><td class='covered-line'><pre>528</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR5EQ<span class='tooltip-content'>11</span></div> || <div class='tooltip'>SrcReg == PPC::CR5UN<span class='tooltip-content'>8</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>3</span>, <span class='None'>False</span>: <span class='covered-line'>8</span>]
+  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>8</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L43'><span>43:12</span></a></span>) to (<span class='line-number'><a href='#L43'><span>44:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (43:12)
+     Condition C2 --> (43:36)
+     Condition C3 --> (44:12)
+     Condition C4 --> (44:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L43'><span>43:12</span></a></span>) to (<span class='line-number'><a href='#L43'><span>44:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (43:12)
+     Condition C2 --> (43:36)
+     Condition C3 --> (44:12)
+     Condition C4 --> (44:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { T,  -,  -,  -  = T      }
+  2 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L43'><span>43:12</span></a></span>) to (<span class='line-number'><a href='#L43'><span>44:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (43:12)
+     Condition C2 --> (43:36)
+     Condition C3 --> (44:12)
+     Condition C4 --> (44:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  T,  -  = T      }
+  4 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,4)
+  C3-Pair: covered: (1,3)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 75.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L45' href='#L45'><pre>45</pre></a></td><td class='covered-line'><pre>520</pre></td><td class='code'><pre>    Reg = PPC::CR5;</pre></td></tr><tr><td class='line-number'><a name='L46' href='#L46'><pre>46</pre></a></td><td class='covered-line'><pre>8</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR6LT || <div class='tooltip'>SrcReg == PPC::CR6GT<span class='tooltip-content'>6</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>2</span>, <span class='None'>False</span>: <span class='covered-line'>6</span>]
+  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>2</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L47' href='#L47'><pre>47</pre></a></td><td class='covered-line'><pre>8</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR6EQ<span class='tooltip-content'>2</span></div> || <div class='tooltip'>SrcReg == PPC::CR6UN<span class='tooltip-content'>2</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>2</span>]
+  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>2</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L46'><span>46:12</span></a></span>) to (<span class='line-number'><a href='#L46'><span>47:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (46:12)
+     Condition C2 --> (46:36)
+     Condition C3 --> (47:12)
+     Condition C4 --> (47:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L46'><span>46:12</span></a></span>) to (<span class='line-number'><a href='#L46'><span>47:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (46:12)
+     Condition C2 --> (46:36)
+     Condition C3 --> (47:12)
+     Condition C4 --> (47:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L46'><span>46:12</span></a></span>) to (<span class='line-number'><a href='#L46'><span>47:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (46:12)
+     Condition C2 --> (46:36)
+     Condition C3 --> (47:12)
+     Condition C4 --> (47:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,3)
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 50.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L48' href='#L48'><pre>48</pre></a></td><td class='covered-line'><pre>6</pre></td><td class='code'><pre>    Reg = PPC::CR6;</pre></td></tr><tr><td class='line-number'><a name='L49' href='#L49'><pre>49</pre></a></td><td class='covered-line'><pre>2</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR7LT || <div class='tooltip'><span class='red'>SrcReg == PPC::CR7GT</span><span class='tooltip-content'>0</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>2</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L50' href='#L50'><pre>50</pre></a></td><td class='covered-line'><pre>2</pre></td><td class='code'><pre>           <div class='tooltip'><span class='red'>SrcReg == PPC::CR7EQ</span><span class='tooltip-content'>0</span></div> || <div class='tooltip'><span class='red'>SrcReg == PPC::CR7UN</span><span class='tooltip-content'>0</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L49'><span>49:12</span></a></span>) to (<span class='line-number'><a href='#L49'><span>50:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (49:12)
+     Condition C2 --> (49:36)
+     Condition C3 --> (50:12)
+     Condition C4 --> (50:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L49'><span>49:12</span></a></span>) to (<span class='line-number'><a href='#L49'><span>50:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (49:12)
+     Condition C2 --> (49:36)
+     Condition C3 --> (50:12)
+     Condition C4 --> (50:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L49'><span>49:12</span></a></span>) to (<span class='line-number'><a href='#L49'><span>50:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (49:12)
+     Condition C2 --> (49:36)
+     Condition C3 --> (50:12)
+     Condition C4 --> (50:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { T,  -,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L51' href='#L51'><pre>51</pre></a></td><td class='covered-line'><pre>2</pre></td><td class='code'><pre>    Reg = PPC::CR7;</pre></td></tr><tr><td class='line-number'><a name='L52' href='#L52'><pre>52</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L53' href='#L53'><pre>53</pre></a></td><td class='covered-line'><pre>1.21k</pre></td><td class='code'><pre>  assert(Reg != 0 &amp;&amp; &quot;Invalid CR bit register&quot;);</pre></td></tr><tr><td class='line-number'><a name='L54' href='#L54'><pre>54</pre></a></td><td class='covered-line'><pre>1.21k</pre></td><td class='code'><pre>  return Reg;</pre></td></tr><tr><td class='line-number'><a name='L55' href='#L55'><pre>55</pre></a></td><td class='covered-line'><pre>1.21k</pre></td><td class='code'><pre>}</pre><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCAsmPrinter.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCFrameLowering.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCISelLowering.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCISelDAGToDAG.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='centered'><table><div class='source-name-title'><pre>PPCInstrInfo.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div><tr><td><pre>Line</pre></td><td><pre>Count</pre></td><td><pre>Source</pre></td></td></tr><tr><td class='line-number'><a name='L26' href='#L26'><pre>26</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>inline static unsigned getCRFromCRBit(unsigned SrcReg) {</pre></td></tr><tr><td class='line-number'><a name='L27' href='#L27'><pre>27</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>  unsigned Reg = 0;</pre></td></tr><tr><td class='line-number'><a name='L28' href='#L28'><pre>28</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>  if (SrcReg == PPC::CR0LT || <div class='tooltip'>SrcReg == PPC::CR0GT<span class='tooltip-content'>5</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>5</span>]
+  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:31</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>5</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L29' href='#L29'><pre>29</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>      <div class='tooltip'>SrcReg == PPC::CR0EQ<span class='tooltip-content'>5</span></div> || <div class='tooltip'><span class='red'>SrcReg == PPC::CR0UN</span><span class='tooltip-content'>0</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>5</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:31</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L28'><span>28:7</span></a></span>) to (<span class='line-number'><a href='#L28'><span>29:51</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (28:7)
+     Condition C2 --> (28:31)
+     Condition C3 --> (29:7)
+     Condition C4 --> (29:31)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { T,  -,  -,  -  = T      }
+  2 { F,  F,  T,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L30' href='#L30'><pre>30</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>    Reg = PPC::CR0;</pre></td></tr><tr><td class='line-number'><a name='L31' href='#L31'><pre>31</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre>  else <span class='red'>if (</span><span class='red'>SrcReg == PPC::CR1LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR1GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L32' href='#L32'><pre>32</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR1EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR1UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L31'><span>31:12</span></a></span>) to (<span class='line-number'><a href='#L31'><span>32:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (31:12)
+     Condition C2 --> (31:36)
+     Condition C3 --> (32:12)
+     Condition C4 --> (32:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L33' href='#L33'><pre>33</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR1</span><span class='red'>;</span></pre></td></tr><tr><td class='line-number'><a name='L34' href='#L34'><pre>34</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>  else </span><span class='red'>if (</span><span class='red'>SrcReg == PPC::CR2LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR2GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L35' href='#L35'><pre>35</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR2EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR2UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L34'><span>34:12</span></a></span>) to (<span class='line-number'><a href='#L34'><span>35:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (34:12)
+     Condition C2 --> (34:36)
+     Condition C3 --> (35:12)
+     Condition C4 --> (35:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L36' href='#L36'><pre>36</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR2</span><span class='red'>;</span></pre></td></tr><tr><td class='line-number'><a name='L37' href='#L37'><pre>37</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>  else </span><span class='red'>if (</span><span class='red'>SrcReg == PPC::CR3LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR3GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L38' href='#L38'><pre>38</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR3EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR3UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L37'><span>37:12</span></a></span>) to (<span class='line-number'><a href='#L37'><span>38:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (37:12)
+     Condition C2 --> (37:36)
+     Condition C3 --> (38:12)
+     Condition C4 --> (38:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L39' href='#L39'><pre>39</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR3</span><span class='red'>;</span></pre></td></tr><tr><td class='line-number'><a name='L40' href='#L40'><pre>40</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>  else </span><span class='red'>if (</span><span class='red'>SrcReg == PPC::CR4LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR4GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L41' href='#L41'><pre>41</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR4EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR4UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L40'><span>40:12</span></a></span>) to (<span class='line-number'><a href='#L40'><span>41:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (40:12)
+     Condition C2 --> (40:36)
+     Condition C3 --> (41:12)
+     Condition C4 --> (41:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L42' href='#L42'><pre>42</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR4</span><span class='red'>;</span></pre></td></tr><tr><td class='line-number'><a name='L43' href='#L43'><pre>43</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>  else </span><span class='red'>if (</span><span class='red'>SrcReg == PPC::CR5LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR5GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L44' href='#L44'><pre>44</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR5EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR5UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L43'><span>43:12</span></a></span>) to (<span class='line-number'><a href='#L43'><span>44:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (43:12)
+     Condition C2 --> (43:36)
+     Condition C3 --> (44:12)
+     Condition C4 --> (44:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L45' href='#L45'><pre>45</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR5</span><span class='red'>;</span></pre></td></tr><tr><td class='line-number'><a name='L46' href='#L46'><pre>46</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>  else </span><span class='red'>if (</span><span class='red'>SrcReg == PPC::CR6LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR6GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L47' href='#L47'><pre>47</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR6EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR6UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L46'><span>46:12</span></a></span>) to (<span class='line-number'><a href='#L46'><span>47:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (46:12)
+     Condition C2 --> (46:36)
+     Condition C3 --> (47:12)
+     Condition C4 --> (47:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L48' href='#L48'><pre>48</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR6</span><span class='red'>;</span></pre></td></tr><tr><td class='line-number'><a name='L49' href='#L49'><pre>49</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>  else </span><span class='red'>if (</span><span class='red'>SrcReg == PPC::CR7LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR7GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L50' href='#L50'><pre>50</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR7EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR7UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L49'><span>49:12</span></a></span>) to (<span class='line-number'><a href='#L49'><span>50:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (49:12)
+     Condition C2 --> (49:36)
+     Condition C3 --> (50:12)
+     Condition C4 --> (50:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L51' href='#L51'><pre>51</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR7</span>;</pre></td></tr><tr><td class='line-number'><a name='L52' href='#L52'><pre>52</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L53' href='#L53'><pre>53</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>  assert(Reg != 0 &amp;&amp; &quot;Invalid CR bit register&quot;);</pre></td></tr><tr><td class='line-number'><a name='L54' href='#L54'><pre>54</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>  return Reg;</pre></td></tr><tr><td class='line-number'><a name='L55' href='#L55'><pre>55</pre></a></td><td class='covered-line'><pre>9</pre></td><td class='code'><pre>}</pre></td></tr></table></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCHazardRecognizers.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCCCState.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCCallingConv.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCFastISel.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCMCInstLower.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='centered'><table><div class='source-name-title'><pre>PPCRegisterInfo.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div><tr><td><pre>Line</pre></td><td><pre>Count</pre></td><td><pre>Source</pre></td></td></tr><tr><td class='line-number'><a name='L26' href='#L26'><pre>26</pre></a></td><td class='covered-line'><pre>59</pre></td><td class='code'><pre>inline static unsigned getCRFromCRBit(unsigned SrcReg) {</pre></td></tr><tr><td class='line-number'><a name='L27' href='#L27'><pre>27</pre></a></td><td class='covered-line'><pre>59</pre></td><td class='code'><pre>  unsigned Reg = 0;</pre></td></tr><tr><td class='line-number'><a name='L28' href='#L28'><pre>28</pre></a></td><td class='covered-line'><pre>59</pre></td><td class='code'><pre>  if (SrcReg == PPC::CR0LT || SrcReg == PPC::CR0GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:7</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>59</span>]
+  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:31</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>1</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L29' href='#L29'><pre>29</pre></a></td><td class='covered-line'><pre>59</pre></td><td class='code'><pre>      <div class='tooltip'>SrcReg == PPC::CR0EQ<span class='tooltip-content'>58</span></div> || <div class='tooltip'>SrcReg == PPC::CR0UN<span class='tooltip-content'>58</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:7</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:31</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L28'><span>28:7</span></a></span>) to (<span class='line-number'><a href='#L28'><span>29:51</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (28:7)
+     Condition C2 --> (28:31)
+     Condition C3 --> (29:7)
+     Condition C4 --> (29:31)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: covered: (1,2)
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 25.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L30' href='#L30'><pre>30</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>    Reg = PPC::CR0;</pre></td></tr><tr><td class='line-number'><a name='L31' href='#L31'><pre>31</pre></a></td><td class='covered-line'><pre>58</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR1LT || SrcReg == PPC::CR1GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>58</span>]
+  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>1</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L32' href='#L32'><pre>32</pre></a></td><td class='covered-line'><pre>58</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR1EQ<span class='tooltip-content'>57</span></div> || <div class='tooltip'>SrcReg == PPC::CR1UN<span class='tooltip-content'>57</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L31'><span>31:12</span></a></span>) to (<span class='line-number'><a href='#L31'><span>32:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (31:12)
+     Condition C2 --> (31:36)
+     Condition C3 --> (32:12)
+     Condition C4 --> (32:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: covered: (1,2)
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 25.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L33' href='#L33'><pre>33</pre></a></td><td class='covered-line'><pre>1</pre></td><td class='code'><pre>    Reg = PPC::CR1;</pre></td></tr><tr><td class='line-number'><a name='L34' href='#L34'><pre>34</pre></a></td><td class='covered-line'><pre>57</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR2LT || SrcReg == PPC::CR2GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L35' href='#L35'><pre>35</pre></a></td><td class='covered-line'><pre>57</pre></td><td class='code'><pre>           SrcReg == PPC::CR2EQ || SrcReg == PPC::CR2UN)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>57</span>]
+  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>6</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L34'><span>34:12</span></a></span>) to (<span class='line-number'><a href='#L34'><span>35:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (34:12)
+     Condition C2 --> (34:36)
+     Condition C3 --> (35:12)
+     Condition C4 --> (35:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  F,  F,  T  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: covered: (1,2)
+  MC/DC Coverage for Expression: 25.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L36' href='#L36'><pre>36</pre></a></td><td class='covered-line'><pre>6</pre></td><td class='code'><pre>    Reg = PPC::CR2;</pre></td></tr><tr><td class='line-number'><a name='L37' href='#L37'><pre>37</pre></a></td><td class='covered-line'><pre>51</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR3LT || SrcReg == PPC::CR3GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L38' href='#L38'><pre>38</pre></a></td><td class='covered-line'><pre>51</pre></td><td class='code'><pre>           SrcReg == PPC::CR3EQ || SrcReg == PPC::CR3UN)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L37'><span>37:12</span></a></span>) to (<span class='line-number'><a href='#L37'><span>38:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (37:12)
+     Condition C2 --> (37:36)
+     Condition C3 --> (38:12)
+     Condition C4 --> (38:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L39' href='#L39'><pre>39</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre>    <span class='red'>Reg = PPC::CR3</span>;</pre></td></tr><tr><td class='line-number'><a name='L40' href='#L40'><pre>40</pre></a></td><td class='covered-line'><pre>51</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR4LT || SrcReg == PPC::CR4GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L41' href='#L41'><pre>41</pre></a></td><td class='covered-line'><pre>51</pre></td><td class='code'><pre>           SrcReg == PPC::CR4EQ || SrcReg == PPC::CR4UN)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>51</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L40'><span>40:12</span></a></span>) to (<span class='line-number'><a href='#L40'><span>41:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (40:12)
+     Condition C2 --> (40:36)
+     Condition C3 --> (41:12)
+     Condition C4 --> (41:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L42' href='#L42'><pre>42</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre>    <span class='red'>Reg = PPC::CR4</span>;</pre></td></tr><tr><td class='line-number'><a name='L43' href='#L43'><pre>43</pre></a></td><td class='covered-line'><pre>51</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR5LT || <div class='tooltip'>SrcReg == PPC::CR5GT<span class='tooltip-content'>4</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>47</span>, <span class='None'>False</span>: <span class='covered-line'>4</span>]
+  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L44' href='#L44'><pre>44</pre></a></td><td class='covered-line'><pre>51</pre></td><td class='code'><pre>           <div class='tooltip'><span class='red'>SrcReg == PPC::CR5EQ</span><span class='tooltip-content'>0</span></div> || <div class='tooltip'><span class='red'>SrcReg == PPC::CR5UN</span><span class='tooltip-content'>0</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L43'><span>43:12</span></a></span>) to (<span class='line-number'><a href='#L43'><span>44:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (43:12)
+     Condition C2 --> (43:36)
+     Condition C3 --> (44:12)
+     Condition C4 --> (44:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { T,  -,  -,  -  = T      }
+  2 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L45' href='#L45'><pre>45</pre></a></td><td class='covered-line'><pre>51</pre></td><td class='code'><pre>    Reg = PPC::CR5;</pre></td></tr><tr><td class='line-number'><a name='L46' href='#L46'><pre>46</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre>  else <span class='red'>if (</span><span class='red'>SrcReg == PPC::CR6LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR6GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L47' href='#L47'><pre>47</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR6EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR6UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L46'><span>46:12</span></a></span>) to (<span class='line-number'><a href='#L46'><span>47:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (46:12)
+     Condition C2 --> (46:36)
+     Condition C3 --> (47:12)
+     Condition C4 --> (47:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L48' href='#L48'><pre>48</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR6</span><span class='red'>;</span></pre></td></tr><tr><td class='line-number'><a name='L49' href='#L49'><pre>49</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>  else </span><span class='red'>if (</span><span class='red'>SrcReg == PPC::CR7LT</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR7GT</span><span class='red'> ||</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L50' href='#L50'><pre>50</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>           </span><span class='red'>SrcReg == PPC::CR7EQ</span><span class='red'> || </span><span class='red'>SrcReg == PPC::CR7UN</span><span class='red'>)</span></pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L49'><span>49:12</span></a></span>) to (<span class='line-number'><a href='#L49'><span>50:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (49:12)
+     Condition C2 --> (49:36)
+     Condition C3 --> (50:12)
+     Condition C4 --> (50:36)
+
+  Executed MC/DC Test Vectors:
+
+     None.
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L51' href='#L51'><pre>51</pre></a></td><td class='uncovered-line'><pre>0</pre></td><td class='code'><pre><span class='red'>    </span><span class='red'>Reg = PPC::CR7</span>;</pre></td></tr><tr><td class='line-number'><a name='L52' href='#L52'><pre>52</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L53' href='#L53'><pre>53</pre></a></td><td class='covered-line'><pre>59</pre></td><td class='code'><pre>  assert(Reg != 0 &amp;&amp; &quot;Invalid CR bit register&quot;);</pre></td></tr><tr><td class='line-number'><a name='L54' href='#L54'><pre>54</pre></a></td><td class='covered-line'><pre>59</pre></td><td class='code'><pre>  return Reg;</pre></td></tr><tr><td class='line-number'><a name='L55' href='#L55'><pre>55</pre></a></td><td class='covered-line'><pre>59</pre></td><td class='code'><pre>}</pre></td></tr></table></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCSubtarget.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCInstructionSelector.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCTargetMachine.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCLoopInstrFormPrep.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCEarlyReturn.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCBranchSelector.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCBoolRetToInt.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCMIPeephole.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCExpandAtomicPseudoInsts.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCCTRLoops.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCMacroFusion.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCTargetTransformInfo.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCTOCRegDeps.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCTLSDynamicCall.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCVSXCopy.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCReduceCRLogicals.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCVSXFMAMutate.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCVSXSwapRemoval.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCExpandISEL.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='centered'><table><div class='source-name-title'><pre>PPCPreEmitPeephole.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div><tr><td><pre>Line</pre></td><td><pre>Count</pre></td><td><pre>Source</pre></td></td></tr><tr><td class='line-number'><a name='L26' href='#L26'><pre>26</pre></a></td><td class='covered-line'><pre>1.14k</pre></td><td class='code'><pre>inline static unsigned getCRFromCRBit(unsigned SrcReg) {</pre></td></tr><tr><td class='line-number'><a name='L27' href='#L27'><pre>27</pre></a></td><td class='covered-line'><pre>1.14k</pre></td><td class='code'><pre>  unsigned Reg = 0;</pre></td></tr><tr><td class='line-number'><a name='L28' href='#L28'><pre>28</pre></a></td><td class='covered-line'><pre>1.14k</pre></td><td class='code'><pre>  if (SrcReg == PPC::CR0LT || <div class='tooltip'>SrcReg == PPC::CR0GT<span class='tooltip-content'>1.13k</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>14</span>, <span class='None'>False</span>: <span class='covered-line'>1.13k</span>]
+  Branch (<span class='line-number'><a name='L28' href='#L28'><span>28:31</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>276</span>, <span class='None'>False</span>: <span class='covered-line'>855</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L29' href='#L29'><pre>29</pre></a></td><td class='covered-line'><pre>1.14k</pre></td><td class='code'><pre>      <div class='tooltip'>SrcReg == PPC::CR0EQ<span class='tooltip-content'>855</span></div> || <div class='tooltip'>SrcReg == PPC::CR0UN<span class='tooltip-content'>548</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:7</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>307</span>, <span class='None'>False</span>: <span class='covered-line'>548</span>]
+  Branch (<span class='line-number'><a name='L29' href='#L29'><span>29:31</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>544</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L28'><span>28:7</span></a></span>) to (<span class='line-number'><a href='#L28'><span>29:51</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (28:7)
+     Condition C2 --> (28:31)
+     Condition C3 --> (29:7)
+     Condition C4 --> (29:31)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  F,  T  = T      }
+  4 { F,  F,  T,  -  = T      }
+  5 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,5)
+  C3-Pair: covered: (1,4)
+  C4-Pair: covered: (1,3)
+  MC/DC Coverage for Expression: 100.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L30' href='#L30'><pre>30</pre></a></td><td class='covered-line'><pre>601</pre></td><td class='code'><pre>    Reg = PPC::CR0;</pre></td></tr><tr><td class='line-number'><a name='L31' href='#L31'><pre>31</pre></a></td><td class='covered-line'><pre>544</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR1LT || SrcReg == PPC::CR1GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>544</span>]
+  Branch (<span class='line-number'><a name='L31' href='#L31'><span>31:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>1</span>, <span class='None'>False</span>: <span class='covered-line'>543</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L32' href='#L32'><pre>32</pre></a></td><td class='covered-line'><pre>544</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR1EQ<span class='tooltip-content'>543</span></div> || <div class='tooltip'>SrcReg == PPC::CR1UN<span class='tooltip-content'>536</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>7</span>, <span class='None'>False</span>: <span class='covered-line'>536</span>]
+  Branch (<span class='line-number'><a name='L32' href='#L32'><span>32:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>536</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L31'><span>31:12</span></a></span>) to (<span class='line-number'><a href='#L31'><span>32:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (31:12)
+     Condition C2 --> (31:36)
+     Condition C3 --> (32:12)
+     Condition C4 --> (32:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  F,  T,  -  = T      }
+  3 { F,  T,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: covered: (1,3)
+  C3-Pair: covered: (1,2)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 50.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L33' href='#L33'><pre>33</pre></a></td><td class='covered-line'><pre>8</pre></td><td class='code'><pre>    Reg = PPC::CR1;</pre></td></tr><tr><td class='line-number'><a name='L34' href='#L34'><pre>34</pre></a></td><td class='covered-line'><pre>536</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR2LT || <div class='tooltip'>SrcReg == PPC::CR2GT<span class='tooltip-content'>507</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>29</span>, <span class='None'>False</span>: <span class='covered-line'>507</span>]
+  Branch (<span class='line-number'><a name='L34' href='#L34'><span>34:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>503</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L35' href='#L35'><pre>35</pre></a></td><td class='covered-line'><pre>536</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR2EQ<span class='tooltip-content'>503</span></div> || <div class='tooltip'>SrcReg == PPC::CR2UN<span class='tooltip-content'>492</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>11</span>, <span class='None'>False</span>: <span class='covered-line'>492</span>]
+  Branch (<span class='line-number'><a name='L35' href='#L35'><span>35:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>3</span>, <span class='None'>False</span>: <span class='covered-line'>489</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L34'><span>34:12</span></a></span>) to (<span class='line-number'><a href='#L34'><span>35:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (34:12)
+     Condition C2 --> (34:36)
+     Condition C3 --> (35:12)
+     Condition C4 --> (35:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  F,  T  = T      }
+  4 { F,  F,  T,  -  = T      }
+  5 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,5)
+  C3-Pair: covered: (1,4)
+  C4-Pair: covered: (1,3)
+  MC/DC Coverage for Expression: 100.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L36' href='#L36'><pre>36</pre></a></td><td class='covered-line'><pre>47</pre></td><td class='code'><pre>    Reg = PPC::CR2;</pre></td></tr><tr><td class='line-number'><a name='L37' href='#L37'><pre>37</pre></a></td><td class='covered-line'><pre>489</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR3LT || <div class='tooltip'>SrcReg == PPC::CR3GT<span class='tooltip-content'>487</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>2</span>, <span class='None'>False</span>: <span class='covered-line'>487</span>]
+  Branch (<span class='line-number'><a name='L37' href='#L37'><span>37:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>487</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L38' href='#L38'><pre>38</pre></a></td><td class='covered-line'><pre>489</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR3EQ<span class='tooltip-content'>487</span></div> || <div class='tooltip'>SrcReg == PPC::CR3UN<span class='tooltip-content'>483</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+  Branch (<span class='line-number'><a name='L38' href='#L38'><span>38:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L37'><span>37:12</span></a></span>) to (<span class='line-number'><a href='#L37'><span>38:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (37:12)
+     Condition C2 --> (37:36)
+     Condition C3 --> (38:12)
+     Condition C4 --> (38:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  T,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: not covered
+  C3-Pair: covered: (1,3)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 50.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L39' href='#L39'><pre>39</pre></a></td><td class='covered-line'><pre>6</pre></td><td class='code'><pre>    Reg = PPC::CR3;</pre></td></tr><tr><td class='line-number'><a name='L40' href='#L40'><pre>40</pre></a></td><td class='covered-line'><pre>483</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR4LT || SrcReg == PPC::CR4GT ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+  Branch (<span class='line-number'><a name='L40' href='#L40'><span>40:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>483</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L41' href='#L41'><pre>41</pre></a></td><td class='covered-line'><pre>483</pre></td><td class='code'><pre>           SrcReg == PPC::CR4EQ || <div class='tooltip'>SrcReg == PPC::CR4UN<span class='tooltip-content'>477</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>6</span>, <span class='None'>False</span>: <span class='covered-line'>477</span>]
+  Branch (<span class='line-number'><a name='L41' href='#L41'><span>41:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>477</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L40'><span>40:12</span></a></span>) to (<span class='line-number'><a href='#L40'><span>41:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (40:12)
+     Condition C2 --> (40:36)
+     Condition C3 --> (41:12)
+     Condition C4 --> (41:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { F,  F,  T,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: covered: (1,2)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 25.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L42' href='#L42'><pre>42</pre></a></td><td class='covered-line'><pre>6</pre></td><td class='code'><pre>    Reg = PPC::CR4;</pre></td></tr><tr><td class='line-number'><a name='L43' href='#L43'><pre>43</pre></a></td><td class='covered-line'><pre>477</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR5LT || <div class='tooltip'>SrcReg == PPC::CR5GT<span class='tooltip-content'>20</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>457</span>, <span class='None'>False</span>: <span class='covered-line'>20</span>]
+  Branch (<span class='line-number'><a name='L43' href='#L43'><span>43:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>9</span>, <span class='None'>False</span>: <span class='covered-line'>11</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L44' href='#L44'><pre>44</pre></a></td><td class='covered-line'><pre>477</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR5EQ<span class='tooltip-content'>11</span></div> || <div class='tooltip'>SrcReg == PPC::CR5UN<span class='tooltip-content'>8</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>3</span>, <span class='None'>False</span>: <span class='covered-line'>8</span>]
+  Branch (<span class='line-number'><a name='L44' href='#L44'><span>44:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>8</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L43'><span>43:12</span></a></span>) to (<span class='line-number'><a href='#L43'><span>44:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (43:12)
+     Condition C2 --> (43:36)
+     Condition C3 --> (44:12)
+     Condition C4 --> (44:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  F,  T,  -  = T      }
+  4 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,4)
+  C3-Pair: covered: (1,3)
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 75.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L45' href='#L45'><pre>45</pre></a></td><td class='covered-line'><pre>469</pre></td><td class='code'><pre>    Reg = PPC::CR5;</pre></td></tr><tr><td class='line-number'><a name='L46' href='#L46'><pre>46</pre></a></td><td class='covered-line'><pre>8</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR6LT || <div class='tooltip'>SrcReg == PPC::CR6GT<span class='tooltip-content'>6</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>2</span>, <span class='None'>False</span>: <span class='covered-line'>6</span>]
+  Branch (<span class='line-number'><a name='L46' href='#L46'><span>46:36</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>4</span>, <span class='None'>False</span>: <span class='covered-line'>2</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L47' href='#L47'><pre>47</pre></a></td><td class='covered-line'><pre>8</pre></td><td class='code'><pre>           <div class='tooltip'>SrcReg == PPC::CR6EQ<span class='tooltip-content'>2</span></div> || <div class='tooltip'>SrcReg == PPC::CR6UN<span class='tooltip-content'>2</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>2</span>]
+  Branch (<span class='line-number'><a name='L47' href='#L47'><span>47:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='None'>False</span>: <span class='covered-line'>2</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L46'><span>46:12</span></a></span>) to (<span class='line-number'><a href='#L46'><span>47:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (46:12)
+     Condition C2 --> (46:36)
+     Condition C3 --> (47:12)
+     Condition C4 --> (47:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { F,  F,  F,  F  = F      }
+  2 { T,  -,  -,  -  = T      }
+  3 { F,  T,  -,  -  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,3)
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 50.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L48' href='#L48'><pre>48</pre></a></td><td class='covered-line'><pre>6</pre></td><td class='code'><pre>    Reg = PPC::CR6;</pre></td></tr><tr><td class='line-number'><a name='L49' href='#L49'><pre>49</pre></a></td><td class='covered-line'><pre>2</pre></td><td class='code'><pre>  else if (SrcReg == PPC::CR7LT || <div class='tooltip'><span class='red'>SrcReg == PPC::CR7GT</span><span class='tooltip-content'>0</span></div> ||</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>2</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L49' href='#L49'><span>49:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L50' href='#L50'><pre>50</pre></a></td><td class='covered-line'><pre>2</pre></td><td class='code'><pre>           <div class='tooltip'><span class='red'>SrcReg == PPC::CR7EQ</span><span class='tooltip-content'>0</span></div> || <div class='tooltip'><span class='red'>SrcReg == PPC::CR7UN</span><span class='tooltip-content'>0</span></div>)</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:12</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+  Branch (<span class='line-number'><a name='L50' href='#L50'><span>50:36</span></a></span>): [<span class='red'>True</span>: <span class='uncovered-line'>0</span>, <span class='red'>False</span>: <span class='uncovered-line'>0</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L49'><span>49:12</span></a></span>) to (<span class='line-number'><a href='#L49'><span>50:56</span></a></span>)
+
+  Number of Conditions: 4
+     Condition C1 --> (49:12)
+     Condition C2 --> (49:36)
+     Condition C3 --> (50:12)
+     Condition C4 --> (50:36)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2, C3, C4    Result
+  1 { T,  -,  -,  -  = T      }
+
+  C1-Pair: not covered
+  C2-Pair: not covered
+  C3-Pair: not covered
+  C4-Pair: not covered
+  MC/DC Coverage for Expression: 0.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L51' href='#L51'><pre>51</pre></a></td><td class='covered-line'><pre>2</pre></td><td class='code'><pre>    Reg = PPC::CR7;</pre></td></tr><tr><td class='line-number'><a name='L52' href='#L52'><pre>52</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L53' href='#L53'><pre>53</pre></a></td><td class='covered-line'><pre>1.14k</pre></td><td class='code'><pre>  assert(Reg != 0 &amp;&amp; &quot;Invalid CR bit register&quot;);</pre></td></tr><tr><td class='line-number'><a name='L54' href='#L54'><pre>54</pre></a></td><td class='covered-line'><pre>1.14k</pre></td><td class='code'><pre>  return Reg;</pre></td></tr><tr><td class='line-number'><a name='L55' href='#L55'><pre>55</pre></a></td><td class='covered-line'><pre>1.14k</pre></td><td class='code'><pre>}</pre></td></tr></table></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCLowerMASSVEntries.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCGenScalarMASSEntries.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCCallLowering.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div><div class='expansion-view'><div class='source-name-title'><pre>Unexecuted instantiation: PPCRegisterBankInfo.cpp:llvm::getCRFromCRBit(unsigned int)</pre></div></div></td></tr><tr><td class='line-number'><a name='L56' href='#L56'><pre>56</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L57' href='#L57'><pre>57</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>class PPCRegisterInfo : public PPCGenRegisterInfo {</pre></td></tr><tr><td class='line-number'><a name='L58' href='#L58'><pre>58</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  DenseMap&lt;unsigned, unsigned&gt; ImmToIdxMap;</pre></td></tr><tr><td class='line-number'><a name='L59' href='#L59'><pre>59</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  const PPCTargetMachine &amp;TM;</pre></td></tr><tr><td class='line-number'><a name='L60' href='#L60'><pre>60</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L61' href='#L61'><pre>61</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>public:</pre></td></tr><tr><td class='line-number'><a name='L62' href='#L62'><pre>62</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  PPCRegisterInfo(const PPCTargetMachine &amp;TM);</pre></td></tr><tr><td class='line-number'><a name='L63' href='#L63'><pre>63</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L64' href='#L64'><pre>64</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  /// getMappedIdxOpcForImmOpc - Return the mapped index form load/store opcode</pre></td></tr><tr><td class='line-number'><a name='L65' href='#L65'><pre>65</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  /// for a given imm form load/store opcode \p ImmFormOpcode.</pre></td></tr><tr><td class='line-number'><a name='L66' href='#L66'><pre>66</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  /// FIXME: move this to PPCInstrInfo class.</pre></td></tr><tr><td class='line-number'><a name='L67' href='#L67'><pre>67</pre></a></td><td class='covered-line'><pre>255k</pre></td><td class='code'><pre>  unsigned getMappedIdxOpcForImmOpc(unsigned ImmOpcode) const {</pre></td></tr><tr><td class='line-number'><a name='L68' href='#L68'><pre>68</pre></a></td><td class='covered-line'><pre>255k</pre></td><td class='code'><pre>    if (!ImmToIdxMap.count(ImmOpcode))</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L68' href='#L68'><span>68:9</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>118k</span>, <span class='None'>False</span>: <span class='covered-line'>137k</span>]
+</pre></div></td></tr><tr><td class='line-number'><a name='L69' href='#L69'><pre>69</pre></a></td><td class='covered-line'><pre>118k</pre></td><td class='code'><pre>      return PPC::INSTRUCTION_LIST_END;</pre></td></tr><tr><td class='line-number'><a name='L70' href='#L70'><pre>70</pre></a></td><td class='covered-line'><pre>137k</pre></td><td class='code'><pre>    return ImmToIdxMap.find(ImmOpcode)-&gt;second;</pre></td></tr><tr><td class='line-number'><a name='L71' href='#L71'><pre>71</pre></a></td><td class='covered-line'><pre>255k</pre></td><td class='code'><pre>  }</pre></td></tr><tr><td class='line-number'><a name='L72' href='#L72'><pre>72</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L73' href='#L73'><pre>73</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  /// getPointerRegClass - Return the register class to use to hold pointers.</pre></td></tr><tr><td class='line-number'><a name='L74' href='#L74'><pre>74</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  /// This is used for addressing modes.</pre></td></tr><tr><td class='line-number'><a name='L75' href='#L75'><pre>75</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  const TargetRegisterClass *</pre></td></tr><tr><td class='line-number'><a name='L76' href='#L76'><pre>76</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  getPointerRegClass(const MachineFunction &amp;MF, unsigned Kind=0) const override;</pre></td></tr><tr><td class='line-number'><a name='L77' href='#L77'><pre>77</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L78' href='#L78'><pre>78</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  unsigned getRegPressureLimit(const TargetRegisterClass *RC,</pre></td></tr><tr><td class='line-number'><a name='L79' href='#L79'><pre>79</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                               MachineFunction &amp;MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L80' href='#L80'><pre>80</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L81' href='#L81'><pre>81</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  const TargetRegisterClass *</pre></td></tr><tr><td class='line-number'><a name='L82' href='#L82'><pre>82</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  getLargestLegalSuperClass(const TargetRegisterClass *RC,</pre></td></tr><tr><td class='line-number'><a name='L83' href='#L83'><pre>83</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                            const MachineFunction &amp;MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L84' href='#L84'><pre>84</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L85' href='#L85'><pre>85</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  /// Code Generation virtual methods...</pre></td></tr><tr><td class='line-number'><a name='L86' href='#L86'><pre>86</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  const MCPhysReg *getCalleeSavedRegs(const MachineFunction *MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L87' href='#L87'><pre>87</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  const uint32_t *getCallPreservedMask(const MachineFunction &amp;MF,</pre></td></tr><tr><td class='line-number'><a name='L88' href='#L88'><pre>88</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                                       CallingConv::ID CC) const override;</pre></td></tr><tr><td class='line-number'><a name='L89' href='#L89'><pre>89</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  const uint32_t *getNoPreservedMask() const override;</pre></td></tr><tr><td class='line-number'><a name='L90' href='#L90'><pre>90</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L91' href='#L91'><pre>91</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void adjustStackMapLiveOutMask(uint32_t *Mask) const override;</pre></td></tr><tr><td class='line-number'><a name='L92' href='#L92'><pre>92</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L93' href='#L93'><pre>93</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  BitVector getReservedRegs(const MachineFunction &amp;MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L94' href='#L94'><pre>94</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool isAsmClobberable(const MachineFunction &amp;MF,</pre></td></tr><tr><td class='line-number'><a name='L95' href='#L95'><pre>95</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                        MCRegister PhysReg) const override;</pre></td></tr><tr><td class='line-number'><a name='L96' href='#L96'><pre>96</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool isCallerPreservedPhysReg(MCRegister PhysReg,</pre></td></tr><tr><td class='line-number'><a name='L97' href='#L97'><pre>97</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                                const MachineFunction &amp;MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L98' href='#L98'><pre>98</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L99' href='#L99'><pre>99</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // Provide hints to the register allocator for allocating subregisters</pre></td></tr><tr><td class='line-number'><a name='L100' href='#L100'><pre>100</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // of primed and unprimed accumulators. For example, if accumulator</pre></td></tr><tr><td class='line-number'><a name='L101' href='#L101'><pre>101</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // ACC5 is assigned, we also want to assign UACC5 to the input.</pre></td></tr><tr><td class='line-number'><a name='L102' href='#L102'><pre>102</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // Similarly if UACC5 is assigned, we want to assign VSRp10, VSRp11</pre></td></tr><tr><td class='line-number'><a name='L103' href='#L103'><pre>103</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // to its inputs.</pre></td></tr><tr><td class='line-number'><a name='L104' href='#L104'><pre>104</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool getRegAllocationHints(Register VirtReg, ArrayRef&lt;MCPhysReg&gt; Order,</pre></td></tr><tr><td class='line-number'><a name='L105' href='#L105'><pre>105</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                             SmallVectorImpl&lt;MCPhysReg&gt; &amp;Hints,</pre></td></tr><tr><td class='line-number'><a name='L106' href='#L106'><pre>106</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                             const MachineFunction &amp;MF, const VirtRegMap *VRM,</pre></td></tr><tr><td class='line-number'><a name='L107' href='#L107'><pre>107</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                             const LiveRegMatrix *Matrix) const override;</pre></td></tr><tr><td class='line-number'><a name='L108' href='#L108'><pre>108</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L109' href='#L109'><pre>109</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  /// We require the register scavenger.</pre></td></tr><tr><td class='line-number'><a name='L110' href='#L110'><pre>110</pre></a></td><td class='covered-line'><pre>137k</pre></td><td class='code'><pre>  bool requiresRegisterScavenging(const MachineFunction &amp;MF) const override {</pre></td></tr><tr><td class='line-number'><a name='L111' href='#L111'><pre>111</pre></a></td><td class='covered-line'><pre>137k</pre></td><td class='code'><pre>    return true;</pre></td></tr><tr><td class='line-number'><a name='L112' href='#L112'><pre>112</pre></a></td><td class='covered-line'><pre>137k</pre></td><td class='code'><pre>  }</pre></td></tr><tr><td class='line-number'><a name='L113' href='#L113'><pre>113</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L114' href='#L114'><pre>114</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool requiresFrameIndexScavenging(const MachineFunction &amp;MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L115' href='#L115'><pre>115</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L116' href='#L116'><pre>116</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool requiresVirtualBaseRegisters(const MachineFunction &amp;MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L117' href='#L117'><pre>117</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L118' href='#L118'><pre>118</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerDynamicAlloc(MachineBasicBlock::iterator II) const;</pre></td></tr><tr><td class='line-number'><a name='L119' href='#L119'><pre>119</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerDynamicAreaOffset(MachineBasicBlock::iterator II) const;</pre></td></tr><tr><td class='line-number'><a name='L120' href='#L120'><pre>120</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void prepareDynamicAlloca(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L121' href='#L121'><pre>121</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                            Register &amp;NegSizeReg, bool &amp;KillNegSizeReg,</pre></td></tr><tr><td class='line-number'><a name='L122' href='#L122'><pre>122</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                            Register &amp;FramePointer) const;</pre></td></tr><tr><td class='line-number'><a name='L123' href='#L123'><pre>123</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerPrepareProbedAlloca(MachineBasicBlock::iterator II) const;</pre></td></tr><tr><td class='line-number'><a name='L124' href='#L124'><pre>124</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerCRSpilling(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L125' href='#L125'><pre>125</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                       unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L126' href='#L126'><pre>126</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerCRRestore(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L127' href='#L127'><pre>127</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                      unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L128' href='#L128'><pre>128</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerCRBitSpilling(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L129' href='#L129'><pre>129</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                          unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L130' href='#L130'><pre>130</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerCRBitRestore(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L131' href='#L131'><pre>131</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                         unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L132' href='#L132'><pre>132</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L133' href='#L133'><pre>133</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerOctWordSpilling(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L134' href='#L134'><pre>134</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                            unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L135' href='#L135'><pre>135</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerACCSpilling(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L136' href='#L136'><pre>136</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                        unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L137' href='#L137'><pre>137</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerACCRestore(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L138' href='#L138'><pre>138</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                       unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L139' href='#L139'><pre>139</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L140' href='#L140'><pre>140</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerWACCSpilling(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L141' href='#L141'><pre>141</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                         unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L142' href='#L142'><pre>142</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerWACCRestore(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L143' href='#L143'><pre>143</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                        unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L144' href='#L144'><pre>144</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L145' href='#L145'><pre>145</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerQuadwordSpilling(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L146' href='#L146'><pre>146</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                             unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L147' href='#L147'><pre>147</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void lowerQuadwordRestore(MachineBasicBlock::iterator II,</pre></td></tr><tr><td class='line-number'><a name='L148' href='#L148'><pre>148</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                            unsigned FrameIndex) const;</pre></td></tr><tr><td class='line-number'><a name='L149' href='#L149'><pre>149</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L150' href='#L150'><pre>150</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  static void emitAccCopyInfo(MachineBasicBlock &amp;MBB, MCRegister DestReg,</pre></td></tr><tr><td class='line-number'><a name='L151' href='#L151'><pre>151</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                              MCRegister SrcReg);</pre></td></tr><tr><td class='line-number'><a name='L152' href='#L152'><pre>152</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L153' href='#L153'><pre>153</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool hasReservedSpillSlot(const MachineFunction &amp;MF, Register Reg,</pre></td></tr><tr><td class='line-number'><a name='L154' href='#L154'><pre>154</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                            int &amp;FrameIdx) const override;</pre></td></tr><tr><td class='line-number'><a name='L155' href='#L155'><pre>155</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool eliminateFrameIndex(MachineBasicBlock::iterator II, int SPAdj,</pre></td></tr><tr><td class='line-number'><a name='L156' href='#L156'><pre>156</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                           unsigned FIOperandNum,</pre></td></tr><tr><td class='line-number'><a name='L157' href='#L157'><pre>157</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                           RegScavenger *RS = nullptr) const override;</pre></td></tr><tr><td class='line-number'><a name='L158' href='#L158'><pre>158</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L159' href='#L159'><pre>159</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // Support for virtual base registers.</pre></td></tr><tr><td class='line-number'><a name='L160' href='#L160'><pre>160</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool needsFrameBaseReg(MachineInstr *MI, int64_t Offset) const override;</pre></td></tr><tr><td class='line-number'><a name='L161' href='#L161'><pre>161</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  Register materializeFrameBaseRegister(MachineBasicBlock *MBB, int FrameIdx,</pre></td></tr><tr><td class='line-number'><a name='L162' href='#L162'><pre>162</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                                        int64_t Offset) const override;</pre></td></tr><tr><td class='line-number'><a name='L163' href='#L163'><pre>163</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  void resolveFrameIndex(MachineInstr &amp;MI, Register BaseReg,</pre></td></tr><tr><td class='line-number'><a name='L164' href='#L164'><pre>164</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                         int64_t Offset) const override;</pre></td></tr><tr><td class='line-number'><a name='L165' href='#L165'><pre>165</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool isFrameOffsetLegal(const MachineInstr *MI, Register BaseReg,</pre></td></tr><tr><td class='line-number'><a name='L166' href='#L166'><pre>166</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>                          int64_t Offset) const override;</pre></td></tr><tr><td class='line-number'><a name='L167' href='#L167'><pre>167</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L168' href='#L168'><pre>168</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // Debug information queries.</pre></td></tr><tr><td class='line-number'><a name='L169' href='#L169'><pre>169</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  Register getFrameRegister(const MachineFunction &amp;MF) const override;</pre></td></tr><tr><td class='line-number'><a name='L170' href='#L170'><pre>170</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L171' href='#L171'><pre>171</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  // Base pointer (stack realignment) support.</pre></td></tr><tr><td class='line-number'><a name='L172' href='#L172'><pre>172</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  Register getBaseRegister(const MachineFunction &amp;MF) const;</pre></td></tr><tr><td class='line-number'><a name='L173' href='#L173'><pre>173</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>  bool hasBasePointer(const MachineFunction &amp;MF) const;</pre></td></tr><tr><td class='line-number'><a name='L174' href='#L174'><pre>174</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L175' href='#L175'><pre>175</pre></a></td><td class='covered-line'><pre>444k</pre></td><td class='code'><pre>  bool isNonallocatableRegisterCalleeSave(MCRegister Reg) const override {</pre></td></tr><tr><td class='line-number'><a name='L176' href='#L176'><pre>176</pre></a></td><td class='covered-line'><pre>444k</pre></td><td class='code'><pre>    return Reg == PPC::LR || <div class='tooltip'>Reg == PPC::LR8<span class='tooltip-content'>444k</span></div>;</pre><div class='expansion-view'><pre>  Branch (<span class='line-number'><a name='L176' href='#L176'><span>176:12</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>22</span>, <span class='None'>False</span>: <span class='covered-line'>444k</span>]
+  Branch (<span class='line-number'><a name='L176' href='#L176'><span>176:30</span></a></span>): [<span class='None'>True</span>: <span class='covered-line'>12</span>, <span class='None'>False</span>: <span class='covered-line'>444k</span>]
+</pre></div><div class='expansion-view'><pre>  MC/DC Decision Region (<span class='line-number'><a href='#L176'><span>176:12</span></a></span>) to (<span class='line-number'><a href='#L176'><span>176:45</span></a></span>)
+
+  Number of Conditions: 2
+     Condition C1 --> (176:12)
+     Condition C2 --> (176:30)
+
+  Executed MC/DC Test Vectors:
+
+     C1, C2    Result
+  1 { F,  F  = F      }
+  2 { T,  -  = T      }
+  3 { F,  T  = T      }
+
+  C1-Pair: covered: (1,2)
+  C2-Pair: covered: (1,3)
+  MC/DC Coverage for Expression: 100.00%
+</pre></div></td></tr><tr><td class='line-number'><a name='L177' href='#L177'><pre>177</pre></a></td><td class='covered-line'><pre>444k</pre></td><td class='code'><pre>  }</pre></td></tr><tr><td class='line-number'><a name='L178' href='#L178'><pre>178</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>};</pre></td></tr><tr><td class='line-number'><a name='L179' href='#L179'><pre>179</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L180' href='#L180'><pre>180</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>} // end namespace llvm</pre></td></tr><tr><td class='line-number'><a name='L181' href='#L181'><pre>181</pre></a></td><td class='uncovered-line'></td><td class='code'><pre></pre></td></tr><tr><td class='line-number'><a name='L182' href='#L182'><pre>182</pre></a></td><td class='uncovered-line'></td><td class='code'><pre>#endif</pre></td></tr></table></div></body></html>
