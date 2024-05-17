@@ -5,12 +5,20 @@ SOURCE=~/llvm-project
 BUILD=~/llvm-build/llvm
 OUTPUT=$SOURCE/docs
 
-rm -rf -- $OUTPUT/opt $OUTPUT/clang $OUTPUT/llc
+# Assumes the binaries under build were compiled with $(which clang)
+python3 $SOURCE/llvm/utils/prepare-code-coverage-artifact.py \
+        --preserve-profiles \
+        --unified-report \
+        -C $BUILD \
+        $(which llvm-profdata) \
+        $(which llvm-cov) \
+        $BUILD/profiles/ \
+        $OUTPUT \
+        $BUILD/bin/clang $BUILD/bin/opt $BUILD/bin/llc 
 
 
-INVOKE="python3 $SOURCE/llvm/utils/prepare-code-coverage-artifact.py --preserve-profiles --unified-report -C $BUILD $(which llvm-profdata) $(which llvm-cov) $BUILD/profiles/ $OUTPUT"
+exit 0
 
-# This should probably merge them once and then spawn separate processes for each binary. Having three copies do the
-# merge at once seems to win segfaults.
-$INVOKE $BUILD/bin/clang $BUILD/bin/opt $BUILD/bin/llc 
-
+# Github won't accept any files greater than 100MB in size
+# TODO, replace them with stubs saying the file was too big?
+find $OUTPUT -type f -size +100M -delete
