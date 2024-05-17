@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+# from __future__ import print_function
 
 """Prepare a code coverage artifact.
 
@@ -68,6 +68,11 @@ def prepare_html_report(
             report_dir,
             "-show-line-counts-or-regions",
             "-show-directory-coverage",
+            "--show-mcdc-summary",
+            "--show-branches=count",
+            "--show-expansions",
+            "--show-instantiations",
+            "--show-mcdc",
             "-Xdemangler",
             "c++filt",
             "-Xdemangler",
