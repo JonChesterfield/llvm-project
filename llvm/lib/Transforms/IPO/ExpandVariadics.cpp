@@ -115,7 +115,7 @@ public:
   // Initialize an allocated va_list object to point to an already
   // initialized contiguous memory region.
   // Return the value to pass as the va_list argument
-  virtual Value *initializeVaList(LLVMContext &Ctx, IRBuilder<> &Builder,
+  virtual Value *initializeVaList(Module &M, LLVMContext &Ctx, IRBuilder<> &Builder,
                                   AllocaInst *VaList, Value *Buffer) = 0;
 
   struct VAArgSlotInfo {
@@ -611,7 +611,8 @@ ExpandVariadics::defineVariadicWrapper(Module &M, IRBuilder<> &Builder,
   for (Argument &A : F.args())
     Args.push_back(&A);
 
-  Args.push_back(VaListInstance);
+  Args.push_back(Builder.CreateAddrSpaceCast(VaListInstance, ABI->vaListParameterType(M)));
+  // Args.push_back(VaListInstance);  
 
   CallInst *Result = Builder.CreateCall(FixedArityReplacement, Args);
   Result->setTailCallKind(CallInst::TCK_Tail);
@@ -792,7 +793,10 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
       Builder.SetInsertPoint(CB);
       Builder.CreateLifetimeStart(VaList, sizeOfAlloca(Ctx, DL, VaList));
     }
-    Args.push_back(ABI->initializeVaList(Ctx, Builder, VaList, Alloced));
+    Builder.SetInsertPoint(CB);
+    Value * last = 
+      ABI->initializeVaList(M, Ctx, Builder, VaList, Alloced);
+    Args.push_back(last);
   }
 
   // Attributes excluding any on the vararg arguments
@@ -810,11 +814,12 @@ bool ExpandVariadics::expandCall(Module &M, IRBuilder<> &Builder, CallBase *CB,
 
   CallBase *NewCB = nullptr;
 
+
   if (CallInst *CI = dyn_cast<CallInst>(CB)) {
 
     Value *Dst = NF ? NF : CI->getCalledOperand();
     FunctionType *NFTy = inlinableVariadicFunctionType(M, VarargFunctionType);
-
+    
     NewCB = CallInst::Create(NFTy, Dst, Args, OpBundles, "", CI);
 
     CallInst::TailCallKind TCK = CI->getTailCallKind();
@@ -914,6 +919,7 @@ bool ExpandVariadics::expandVAIntrinsicCall(IRBuilder<> &Builder,
 
   Value *Dst = Inst->getDest();
   Value *Src = Inst->getSrc();
+
   Builder.CreateMemCpy(Dst, {}, Src, {},
                        ConstantInt::get(Type::getInt32Ty(Ctx), Size));
 
@@ -933,13 +939,23 @@ struct Amdgpu final : public VariadicABIInfo {
   }
 
   Type *vaListParameterType(Module &M) override {
-    const DataLayout &DL = M.getDataLayout();
-    return DL.getAllocaPtrType(M.getContext());
+    // Trying less addrspace
+    if (1)
+      {
+        return PointerType::getUnqual(M.getContext());
+      }
+    else
+      {
+        const DataLayout &DL = M.getDataLayout();
+        return DL.getAllocaPtrType(M.getContext());
+      }
   }
 
-  Value *initializeVaList(LLVMContext &Ctx, IRBuilder<> &Builder,
+  Value *initializeVaList(Module &M, LLVMContext &Ctx, IRBuilder<> &Builder,
                           AllocaInst * /*va_list*/, Value *Buffer) override {
-    return Buffer;
+    // Given Buffer, which is an AllocInst of vararg_buffer
+    // need to return something usable as parameter type
+    return Builder.CreateAddrSpaceCast(Buffer, vaListParameterType(M));
   }
 
   VAArgSlotInfo slotInfo(const DataLayout &DL, Type *Parameter) override {
@@ -964,7 +980,7 @@ struct Wasm final : public VariadicABIInfo {
     return PointerType::getUnqual(M.getContext());
   }
 
-  Value *initializeVaList(LLVMContext &Ctx, IRBuilder<> &Builder,
+  Value *initializeVaList(Module &M, LLVMContext &Ctx, IRBuilder<> &Builder,
                           AllocaInst * /*va_list*/, Value *Buffer) override {
     return Buffer;
   }

@@ -430,7 +430,7 @@ function(runtime_register_target name)
   endforeach()
 endfunction()
 
-if(runtimes)
+if(TRUE) # hacky time
   # Create a runtimes target that uses this file as its top-level CMake file.
   # The runtimes target is a configuration of all the runtime libraries
   # together in a single CMake invocation.

@@ -10,6 +10,59 @@
 
 #include "test/UnitTest/Test.h"
 
+#include "src/__support/OSUtil/io.h"
+#include "src/__support/integer_to_string.h"
+using namespace LIBC_NAMESPACE;
+
+namespace {
+
+void nl() { write_to_stderr("\n"); }
+void dump(const char *s) {
+  write_to_stderr(s);
+  nl();
+}
+
+void dump(int32_t s) {
+  auto x = IntegerToString<int32_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(uint32_t s) {
+  auto x = IntegerToString<uint32_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(int64_t s) {
+  auto x = IntegerToString<int64_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(uint64_t s) {
+  auto x = IntegerToString<uint64_t>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(long int s) {
+  auto x = IntegerToString<long int>(s);
+  write_to_stderr(x.view());
+  nl();
+}
+
+void dump(void * s) {
+  uint64_t tmp;
+  __builtin_memcpy(&tmp, &s, 8);
+
+  auto x = IntegerToString<uint64_t, radix::Hex>(tmp);
+  write_to_stderr(x.view());
+  nl();
+}
+
+} // namespace
+
 int get_nth_int(int n, ...) {
   va_list vlist;
   va_start(vlist, n);
@@ -22,8 +75,38 @@ int get_nth_int(int n, ...) {
   return v.next_var<int>();
 }
 
+int get_nth_int_raw(int n, ...) {
+  dump("get nth raw");
+  va_list vlist;
+  va_start(vlist, n);
+
+  dump("started");
+  dump((void*)vlist);
+  
+  for (int i = 0; i < n; ++i) {
+
+    dump("take va_arg");
+    int r = va_arg(vlist, int);
+    dump(r);
+    dump((void*)vlist);
+  }
+
+  dump("final va_arg");
+  dump((void*)vlist);
+
+  int res = va_arg(vlist, int);
+  dump(res);
+  return res;
+}
+
+
+
 TEST(LlvmLibcArgListTest, BasicUsage) {
+  dump("BasicUsage begin");
+  ASSERT_EQ(get_nth_int_raw(5, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90), 50);
+  dump("BasicUsage mid");
   ASSERT_EQ(get_nth_int(5, 0, 10, 20, 30, 40, 50, 60, 70, 80, 90), 50);
+  dump("BasicUsage end");
 }
 
 int sum_two_nums(int first, int second, ...) {
@@ -50,9 +133,12 @@ int sum_two_nums(int first, int second, ...) {
 }
 
 TEST(LlvmLibcArgListTest, CopyConstructor) {
+    dump("CopyCtor0");
+
   ASSERT_EQ(sum_two_nums(3, 1, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024),
             10);
 
+    dump("CopyCtor1");
   ASSERT_EQ(sum_two_nums(3, 5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024),
             40);
 }
@@ -79,6 +165,8 @@ long int check_primitives(int first, ...) {
 }
 
 TEST(LlvmLibcArgListTest, TestPrimitiveTypes) {
+  dump("Primitives");
+
   char c = '\x01';
   short s = 2;
   int i = 3;
@@ -115,6 +203,8 @@ long int check_struct_type(int first, ...) {
 }
 
 TEST(LlvmLibcArgListTest, TestStructTypes) {
+  dump("StructType");
+
   S s{'\x1', 2, 3, 4l, 5.0f, 6.0};
   ASSERT_EQ(check_struct_type(0, s, 1), 22l);
 }
@@ -142,6 +232,8 @@ int check_vector_type(int first, ...) {
 }
 
 TEST(LlvmLibcArgListTest, TestVectorTypes) {
+  dump("VectorTypes");
+
   int1 v1 = {1};
   int2 v2 = {1, 2};
   int3 v3 = {1, 2, 3};

@@ -19,6 +19,7 @@ namespace LIBC_NAMESPACE {
 namespace internal {
 
 class ArgList {
+public:
   va_list vlist;
 
 public:
