@@ -1706,6 +1706,7 @@ cc_library(
         ":TransformUtils",
         ":Vectorize",
         ":config",
+        ":ir_headers",
     ],
 )
 
