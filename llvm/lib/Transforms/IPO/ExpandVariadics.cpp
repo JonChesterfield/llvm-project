@@ -938,6 +938,80 @@ struct Amdgpu final : public VariadicABIInfo {
   }
 };
 
+
+template <uint32_t MinAlign, uint32_t MaxAlign> Align clampAlign(Align A) {
+  // Uses 0 as a sentinel to mean inactive
+  if (MinAlign && A < MinAlign)
+    A = Align(MinAlign);
+
+  if (MaxAlign && A > MaxAlign)
+    A = Align(MaxAlign);
+
+  return A;
+}
+
+struct SystemV final : public VariadicABIInfo {
+
+  bool enableForTarget() override { return false; }
+
+  bool vaListPassedInSSARegister() override { return false; }
+
+  Type *vaListType(LLVMContext &Ctx) override {
+    auto I32 = Type::getInt32Ty(Ctx);
+    auto Ptr = PointerType::getUnqual(Ctx);
+    return ArrayType::get(StructType::get(Ctx, {I32, I32, Ptr, Ptr}), 1);
+  }
+
+  Type *vaListParameterType(Module &M) override {
+    return PointerType::getUnqual(M.getContext());
+  }
+  
+  Value *initializeVaList(Module &M, LLVMContext &Ctx, IRBuilder<> &Builder,
+                          AllocaInst *VaList, Value *VoidBuffer) override {
+    assert(VaList->getAllocatedType() == vaListType(Ctx));
+
+    Type *VaListTy = vaListType(Ctx);
+
+    Type *I32 = Type::getInt32Ty(Ctx);
+    Type *I64 = Type::getInt64Ty(Ctx);
+
+    Value *Idxs[3] = {
+        ConstantInt::get(I64, 0),
+        ConstantInt::get(I32, 0),
+        nullptr,
+    };
+
+    Idxs[2] = ConstantInt::get(I32, 0);
+    Builder.CreateStore(
+        ConstantInt::get(I32, 48),
+        Builder.CreateInBoundsGEP(VaListTy, VaList, Idxs, "gp_offset"));
+
+    Idxs[2] = ConstantInt::get(I32, 1);
+    Builder.CreateStore(
+        ConstantInt::get(I32, 6 * 8 + 8 * 16),
+        Builder.CreateInBoundsGEP(VaListTy, VaList, Idxs, "fp_offset"));
+
+    Idxs[2] = ConstantInt::get(I32, 2);
+    Builder.CreateStore(
+        VoidBuffer,
+        Builder.CreateInBoundsGEP(VaListTy, VaList, Idxs, "overfow_arg_area"));
+
+    Idxs[2] = ConstantInt::get(I32, 3);
+    Builder.CreateStore(
+        ConstantPointerNull::get(PointerType::getUnqual(Ctx)),
+        Builder.CreateInBoundsGEP(VaListTy, VaList, Idxs, "reg_save_area"));
+
+    return VaList;
+  }
+
+  VAArgSlotInfo slotInfo(const DataLayout &DL, Type *Parameter) override {
+    Align A = clampAlign<8, 0u>(DL.getABITypeAlign(Parameter));
+    bool Indirect = false; // todo, calculate this
+    return {A, Indirect};
+  }
+};
+
+
 struct Wasm final : public VariadicABIInfo {
 
   bool enableForTarget() override {
@@ -978,10 +1052,19 @@ struct Wasm final : public VariadicABIInfo {
 };
 
 std::unique_ptr<VariadicABIInfo> VariadicABIInfo::create(const Triple &T) {
+
   switch (T.getArch()) {
   case Triple::r600:
   case Triple::amdgcn: {
     return std::make_unique<Amdgpu>();
+  }
+
+  case Triple::x86_64: {
+    const bool IsLinuxABI = T.isOSLinux() || T.isOSCygMing();
+    if (IsLinuxABI) {
+      return std::make_unique<SystemV>();
+    }
+    break;
   }
 
   case Triple::wasm32: {
@@ -989,8 +1072,9 @@ std::unique_ptr<VariadicABIInfo> VariadicABIInfo::create(const Triple &T) {
   }
 
   default:
-    return {};
+    break;
   }
+  return {};    
 }
 
 } // namespace
