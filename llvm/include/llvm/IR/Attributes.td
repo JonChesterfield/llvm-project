@@ -98,6 +98,9 @@ def AllocSize : IntAttr<"allocsize", IntersectPreserve, [FnAttr]>;
 /// inline=always.
 def AlwaysInline : EnumAttr<"alwaysinline", IntersectPreserve, [FnAttr]>;
 
+/// specialize whenever argument is known
+def AlwaysSpecialize : EnumAttr<"alwaysspecialize", IntersectPreserve, [ParamAttr]>;
+
 /// Callee is recognized as a builtin, despite nobuiltin attribute on its
 /// declaration.
 def Builtin : EnumAttr<"builtin", IntersectPreserve, [FnAttr]>;

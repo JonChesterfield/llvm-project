@@ -170,6 +170,7 @@ Pass *llvm::createAlwaysInlinerLegacyPass(bool InsertLifetime) {
 
 PreservedAnalyses AlwaysInlinerPass::run(Module &M,
                                          ModuleAnalysisManager &MAM) {
+  fprintf(stderr, "Running Always Inliner\n");
   FunctionAnalysisManager &FAM =
       MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
   auto GetAssumptionCache = [&](Function &F) -> AssumptionCache & {

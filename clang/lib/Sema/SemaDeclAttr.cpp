@@ -4759,6 +4759,12 @@ static void handleAlwaysInlineAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
     D->addAttr(Inline);
 }
 
+static void handleAlwaysSpecializeAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  if (!D->hasAttr<AlwaysSpecializeAttr>()) {
+    D->addAttr(::new (S.Context) AlwaysSpecializeAttr(S.Context, AL));
+  }
+}
+
 static void handleMinSizeAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   if (MinSizeAttr *MinSize = S.mergeMinSizeAttr(D, AL))
     D->addAttr(MinSize);
@@ -6673,6 +6679,9 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
     break;
   case ParsedAttr::AT_AlwaysInline:
     handleAlwaysInlineAttr(S, D, AL);
+    break;
+  case ParsedAttr::AT_AlwaysSpecialize:
+    handleAlwaysSpecializeAttr(S, D, AL);
     break;
   case ParsedAttr::AT_AnalyzerNoReturn:
     handleAnalyzerNoReturnAttr(S, D, AL);

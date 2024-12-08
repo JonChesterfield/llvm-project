@@ -1131,6 +1131,7 @@ void DeadArgumentEliminationPass::propagateVirtMustcallLiveness(
 
 PreservedAnalyses DeadArgumentEliminationPass::run(Module &M,
                                                    ModuleAnalysisManager &) {
+  fprintf(stderr, "Running Dead Argument Elimination\n");
   bool Changed = false;
 
   // First pass: Do a simple check to see if any functions can have their "..."

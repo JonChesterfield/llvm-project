@@ -7657,6 +7657,14 @@ Attribute docs`_, and `the GCC Inline docs`_.
   let Heading = "always_inline, __force_inline";
 }
 
+def AlwaysSpecializeDocs : Documentation {
+  let Category = DocCatConsumed;
+  let Content = [{
+  TODO, write the docs
+  }];
+    let Heading = "always_specialize";      
+}
+
 def EnforceTCBDocs : Documentation {
   let Category = DocCatFunction;
   let Content = [{

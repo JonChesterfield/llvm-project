@@ -560,6 +560,11 @@ std::string Attribute::getAsString(bool InAttrGrp) const {
   if (hasAttribute(Attribute::DereferenceableOrNull))
     return AttrWithBytesToString("dereferenceable_or_null");
 
+  if (hasAttribute(Attribute::AlwaysSpecialize))
+    {
+      fprintf(stderr, "Hit llvm/lib/IR/Attributes.cpp\n");
+    }
+  
   if (hasAttribute(Attribute::AllocSize)) {
     unsigned ElemSize;
     std::optional<unsigned> NumElems;

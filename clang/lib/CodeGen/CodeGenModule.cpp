@@ -2523,6 +2523,12 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
       B.addAttribute("aarch64_new_zt0");
   }
 
+  if (D->hasAttr<AlwaysSpecializeAttr>())
+    {
+      fprintf(stderr, "SetLLVMFunctionAttributesForDefinition: Got a clang attr, creating a llvm attr\n");
+      B.addAttribute(llvm::Attribute::AlwaysSpecialize);
+    }
+
   // Track whether we need to add the optnone LLVM attribute,
   // starting with the default for this optimization level.
   bool ShouldAddOptNone =
@@ -2901,11 +2907,37 @@ void CodeGenModule::SetFunctionAttributes(GlobalDecl GD, llvm::Function *F,
     return;
   }
 
-  const auto *FD = cast<FunctionDecl>(GD.getDecl());
-
   if (!IsIncompleteFunction)
     SetLLVMFunctionAttributes(GD, getTypes().arrangeGlobalDeclaration(GD), F,
                               IsThunk);
+  
+  const auto *FD = cast<FunctionDecl>(GD.getDecl());
+
+  // needs to be after SetLLVMFunctionAttributes or moved into it
+  unsigned count = 0;
+  for (auto i = FD->param_begin(), e = FD->param_end(); i != e; ++i, count++)
+    {
+      const ParmVarDecl *param = (*i);
+
+      if (param->hasAttrs())
+        {
+          const AttrVec &Attrs = param->getAttrs();
+          for (auto *A : Attrs) {
+            if (A->getKind() == attr::AlwaysSpecialize)
+              {
+                F->addParamAttr(count, llvm::Attribute::AlwaysSpecialize);
+              }
+          }
+        }
+
+#if 0
+      // doesn't compile but looks like it should
+      if (param->hasAttr<attr::AlwaysSpecialize>())
+        {
+          printf("Got always specialize\n");
+        }
+#endif
+    }
 
   // Add the Returned attribute for "this", except for iOS 5 and earlier
   // where substantial code, including the libstdc++ dylib, was compiled with
