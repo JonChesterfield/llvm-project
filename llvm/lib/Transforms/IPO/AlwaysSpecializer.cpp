@@ -49,12 +49,47 @@ public:
   bool runOnFunction(Module &M, Function &F);
   bool runOnModule(Module &M) override;
 
+  static bool functionEligible(const Function &F)
+  {
+    if (F.isDeclaration()) return false;
+
+    // TODO: Is this the check?
+    if (!F.hasExactDefinition())
+      return false;
+
+    // How about F.hasFnAttribute(Attribute::Naked)
+    if (F.isIntrinsic()) return false; // redundant with above?
+    
+    size_t arity = F.arg_size();
+  
+    for (size_t i = 0; i < arity; i++) {      
+      if (F.hasParamAttribute(i, llvm::Attribute::AlwaysSpecialize)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+  
   Function *cloneCandidateFunction(Function *F, unsigned ArgNo, Constant *C);
+  Function *cloneCandidateFunction(Function &F, SmallVector<Constant*, 4> C);
 
   using KeyType = std::tuple<Function *, unsigned, Constant *>;
 
   SmallVector<Function *, 8> worklist;
   DenseMap<KeyType, Function *> cache;
+
+
+  // Looking to run without a worklist
+  struct FunctionSpecializations
+  {
+    size_t prevCount = 0;
+    DenseMap<SmallVector<Constant*, 4>, Function*> specs;
+  };
+
+  // Probably needs info about smallvector, might need to be on a pointer not a ref
+  // DenseMap<Function&, FunctionSpecializations>  SpecMap;
+
 };
 
 static Constant *getCandidateConstant(Value *V) {
@@ -93,6 +128,63 @@ Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, unsigned ArgNo,
   return Clone;
 }
 
+  __attribute__((used))
+  Function *AlwaysSpecializer::cloneCandidateFunction(Function &F, SmallVector<Constant*, 4> C){
+
+  for (size_t i = 0; i < C.size(); i++)
+    {
+      if (C[i] != 0) goto good;
+    }
+
+    return 0;
+    
+  good:;
+    
+#if 0
+    // Find the existing specialisations of F
+    auto r = SpecMap.find(F);
+    assert(r != SpecMap.end());
+
+    FunctionSpecializations &existing = r->second;
+
+    DenseMap<SmallVector<Constant*, 4>, Function*> specs = existing.specs;
+
+    // See if we've already created one for this argument vector
+    auto r2 = existing.specs.find(C);
+    if (r2 != existing.specs.end()) {
+      return r2->second;
+    }
+
+    // create a name based on the vector
+  ValueToValueMapTy Mappings;
+  Function *Clone = CloneFunction(&F, Mappings);
+  Clone->setName(F.getName() + ".spec");
+  Clone->setLinkage(GlobalValue::InternalLinkage);
+
+  // Replace uses of the argument with the constant
+  // Strip the specialize from the parameters that are being replaced
+  for (size_t i = 0; i < C.size(); i++)
+    {
+      Constant * c = C[i];
+      if (c != 0)
+        {
+          Clone->removeParamAttr(i, llvm::Attribute::AlwaysSpecialize);
+
+          Argument *V = Clone->getArg(i);
+          V->replaceAllUsesWith(c); // this can turn indirect calls into direct         
+        }
+    }
+
+  // r->insert(std::make_pair(C, Clone));
+
+    return Clone;
+  #endif
+
+      return 0;
+
+  }
+
+  
 bool AlwaysSpecializer::runOnFunctionArgument(Module &M, Function &F,
                                               unsigned ArgNo) {
   bool Changed = false;
@@ -116,6 +208,7 @@ bool AlwaysSpecializer::runOnFunctionArgument(Module &M, Function &F,
       C->dump();
 
       if (Function *CF = dyn_cast<Function>(C)) {
+        (void)CF;
         // Test case misses this because the constant
         // is actually a struct containing a function pointer
         // Actual issue is creating new uses of functions during
@@ -139,6 +232,7 @@ bool AlwaysSpecializer::runOnFunctionArgument(Module &M, Function &F,
 
   return Changed;
 }
+
 
 bool AlwaysSpecializer::runOnFunction(Module &M, Function &F) {
   bool Changed = false;
@@ -195,38 +289,33 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
   //
   // In other cases, this is a way to get the benefit of specialisation with less code size
   // than always_inline implies.
-  
-  DenseMap<Function&,
-    struct {
-      size_t prevCount;
-      DenseMap<SmallVector<Constant*, 4>, Function*> specs;
-    }> Map;
+
 
   // If the function has the attribute, start it from a count of 0
   for (Function &F : make_early_inc_range(M))
     {
-      if (eligible(F))
+      if (functionEligible(F))
         {
-          Map[F] = {0 /*prevCount*/, {} /* table */};
+          SpecMap[F] = FunctionSpecializations();
         }
     }
-  if (Map.size() == 0) return false;
+  if (SpecMap.size() == 0) return false;
 
 
   while (true)
     {
     size_t added = 0;
-    for (Function &F : Map)
+    for (auto &[F, spec] : SpecMap)
       {
         {
           // If F has no uses, don't need to specialise it
           // If it has more uses than last time it was considered, want to check them
-          uint64_t state = F.uses();
-          if (state <= Map[F].prevCount)
+          uint64_t state = F.getNumUses(); // this is linear in the uses of the function :(
+          if (state <= SpecMap[F].prevCount)
             {
               break;
             }
-          Map[F].prevCount = state;
+          SpecMap[F].prevCount = state;
         }
 
         // Has at least one use we haven't looked at before
@@ -240,7 +329,7 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
 
             
             Args = getConstantArgs(u);
-            Spec & s = Map[F].specs[Args];
+            Spec & s = SpecMap[F].specs[Args];
 
             // If we've already specialised wrt this argument set, reuse that one
             if (s.target) continue;
@@ -265,7 +354,7 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
   // are used yet.
 
 
-    for (Function &F : Map)
+    for (Function &F : SpecMap)
       {
         for (Use &u: F.uses())
           {
@@ -275,7 +364,7 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
               }
 
             Args = getConstantArgs(u);
-            Spec & s = Map[F].specs[Args];
+            Spec & s = SpecMap[F].specs[Args];
             assert(s.target);
 
             rewiteCallToTarget(s.target);
