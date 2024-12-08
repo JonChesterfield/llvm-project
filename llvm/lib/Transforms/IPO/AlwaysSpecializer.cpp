@@ -18,7 +18,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Transforms/IPO/FunctionSpecialization.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-
+#include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Support/CommandLine.h"
 
 #include <cstdio> // todo
@@ -246,18 +246,78 @@ good:;
   // Strip the specialize from the parameters that are being replaced
   for (size_t i = 0; i < C.size(); i++) {
     Constant *c = C[i];
-    if (c != 0) {
-      Clone->removeParamAttr(i, llvm::Attribute::AlwaysSpecialize);
+    if (c == 0) continue;
+         
+    Clone->removeParamAttr(i, llvm::Attribute::AlwaysSpecialize);
 
-      Argument *V = Clone->getArg(i);
-      if (V->use_empty()) {
-        fprintf(stderr, "Um, argument has no uses - do we want to be replacing it?\n");
-      }
-      
-      V->replaceAllUsesWith(c); // this can turn indirect calls into direct
+    Argument *V = Clone->getArg(i);
+    if (V->use_empty()) {
+      fprintf(stderr, "Um, argument has no uses - do we want to be replacing it?\n");
     }
-  }
 
+    printf("What are the uses?\n");
+    for (Use &u : make_early_inc_range(V->uses()))
+      {
+        // Hopefully some uses of the argument are instructions
+        printf("Use\n");
+        u.get()->dump();
+
+        User * user = u.getUser();
+        if (Instruction * I = dyn_cast<Instruction>(u.getUser()))
+          {
+            for (Use& op : I->operands())
+              {
+                if (op == u)
+                  {
+                    printf("Use is an operand of an instruction\n");
+
+                    SimplifyQuery SQ = SimplifyQuery(Clone->getDataLayout(),
+                                                       I);
+                    // This bails if it isn't an instruction
+                    Value * maybe = simplifyWithOpReplaced(I,
+                                                           u.get(),
+                                                           c, SQ,
+                                                           false /*AllowRefinement*/);
+                    if (maybe && false)
+                      {
+                        printf("better, replacing uses of\n");
+                        I->dump();
+                        printf("With \n");
+                        maybe->dump();
+                        I->replaceAllUsesWith(maybe);
+                        
+                        // If it's an uninteresting instruction, erase it as well
+                        #if 0
+                        if (!I->isEHPad() && !I->isTerminator() && !I->mayHaveSideEffects())
+                          I->eraseFromParent();
+                        #endif
+
+                        printf("Continue\n");
+                        break;
+                      }
+                      else
+                        {
+                          printf("No simplify\n");
+                        }
+                      
+                  }
+                }
+            }
+
+          
+          else
+            {
+              printf("not an instruction\n");
+              u.getUser()->dump();
+            }
+        }
+
+
+     V->replaceAllUsesWith(c); // this can turn indirect calls into direct
+  } // for each argument
+
+  printf("Done\n");
+  
   existing.specs.insert(std::make_pair(C, Clone));
 
   return Clone;
@@ -467,9 +527,8 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
         // this is probably specmap[f]
         assert(spec == SpecMap[F]);
         Function *target = SpecMap[F].specs[ArgVec];
-        assert(target);
-
-        CB->setCalledFunction(target);
+        if (target)
+          CB->setCalledFunction(target);
       }
 
       (void)spec;
