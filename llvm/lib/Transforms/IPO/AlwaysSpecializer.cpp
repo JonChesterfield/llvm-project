@@ -255,6 +255,8 @@ good:;
       fprintf(stderr, "Um, argument has no uses - do we want to be replacing it?\n");
     }
 
+#if 0
+    // Simplify on the fly works but badly compromises termination
     printf("What are the uses?\n");
     for (Use &u : make_early_inc_range(V->uses()))
       {
@@ -311,7 +313,7 @@ good:;
               u.getUser()->dump();
             }
         }
-
+#endif
 
      V->replaceAllUsesWith(c); // this can turn indirect calls into direct
   } // for each argument
