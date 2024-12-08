@@ -48,7 +48,7 @@ attributes #3 = { nobuiltin "no-builtins" }
 !1 = !{i32 8, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"frame-pointer", i32 2}
-!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git 8de87910aa5e588898756807e8075169fb6e166d)"}
+!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git b02a53b5a92bbc08352f2f70e5f6e216b7e57abb)"}
 ; CHECK-LABEL: define {{[^@]+}}@print
 ; CHECK-SAME: (ptr [[F:%.*]], ptr alwaysspecialize [[FMT:%.*]], ...) #[[ATTR0:[0-9]+]] {
 ; CHECK-NEXT:  entry:
@@ -65,19 +65,6 @@ attributes #3 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@caller
 ; CHECK-SAME: (ptr [[F:%.*]], i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 (ptr, ptr, ...) @print.spec1(ptr [[F]], ptr @.str, ptr @.str.1, i32 [[X]]) #[[ATTR3]]
-; CHECK-NEXT:    ret i32 [[CALL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@print.spec1
-; CHECK-SAME: (ptr [[F:%.*]], ptr [[FMT:%.*]], ...) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[VA:%.*]] = alloca [1 x %struct.__va_list_tag], align 16
-; CHECK-NEXT:    [[ARRAYDECAY:%.*]] = getelementptr inbounds [1 x %struct.__va_list_tag], ptr [[VA]], i64 0, i64 0
-; CHECK-NEXT:    call void @llvm.va_start.p0(ptr [[ARRAYDECAY]])
-; CHECK-NEXT:    [[ARRAYDECAY1:%.*]] = getelementptr inbounds [1 x %struct.__va_list_tag], ptr [[VA]], i64 0, i64 0
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @vprint(ptr [[F]], ptr @.str, ptr [[ARRAYDECAY1]]) #[[ATTR3]]
-; CHECK-NEXT:    [[ARRAYDECAY2:%.*]] = getelementptr inbounds [1 x %struct.__va_list_tag], ptr [[VA]], i64 0, i64 0
-; CHECK-NEXT:    call void @llvm.va_end.p0(ptr [[ARRAYDECAY2]])
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 (ptr, ptr, ...) @print(ptr [[F]], ptr @.str, ptr @.str.1, i32 [[X]]) #[[ATTR3]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;

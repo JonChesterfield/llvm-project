@@ -145,11 +145,11 @@ attributes #1 = { nobuiltin "no-builtins" }
 !1 = !{i32 8, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"frame-pointer", i32 2}
-!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git 8de87910aa5e588898756807e8075169fb6e166d)"}
+!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git b02a53b5a92bbc08352f2f70e5f6e216b7e57abb)"}
 ; CHECK-LABEL: define {{[^@]+}}@loop
 ; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]]) #[[ATTR0:[0-9]+]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @loop.spec0(i32 5) #[[ATTR1:[0-9]+]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @loop.spec(i32 5) #[[ATTR1:[0-9]+]]
 ; CHECK-NEXT:    [[CALL1:%.*]] = call i32 @loop(i32 [[X]]) #[[ATTR1]]
 ; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[CALL]], [[CALL1]]
 ; CHECK-NEXT:    ret i32 [[ADD]]
@@ -158,7 +158,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@loop_driver
 ; CHECK-SAME: () #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @loop.spec0(i32 5) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @loop.spec(i32 5) #[[ATTR1]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
@@ -182,14 +182,14 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@factorial_driver
 ; CHECK-SAME: () #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @factorial.spec0.10(i32 0) #[[ATTR1]]
-; CHECK-NEXT:    [[CALL1:%.*]] = call i32 @factorial.spec0.8(i32 1) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @factorial.spec.9(i32 0) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL1:%.*]] = call i32 @factorial.spec.7(i32 1) #[[ATTR1]]
 ; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[CALL]], [[CALL1]]
-; CHECK-NEXT:    [[CALL2:%.*]] = call i32 @factorial.spec0.6(i32 2) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL2:%.*]] = call i32 @factorial.spec.5(i32 2) #[[ATTR1]]
 ; CHECK-NEXT:    [[ADD3:%.*]] = add i32 [[ADD]], [[CALL2]]
-; CHECK-NEXT:    [[CALL4:%.*]] = call i32 @factorial.spec0.4(i32 3) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL4:%.*]] = call i32 @factorial.spec.3(i32 3) #[[ATTR1]]
 ; CHECK-NEXT:    [[ADD5:%.*]] = add i32 [[ADD3]], [[CALL4]]
-; CHECK-NEXT:    [[CALL6:%.*]] = call i32 @factorial.spec0(i32 4) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL6:%.*]] = call i32 @factorial.spec(i32 4) #[[ATTR1]]
 ; CHECK-NEXT:    [[ADD7:%.*]] = add i32 [[ADD5]], [[CALL6]]
 ; CHECK-NEXT:    ret i32 [[ADD7]]
 ;
@@ -233,44 +233,35 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@evenodd_driver
 ; CHECK-SAME: () #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call zeroext i1 @even.spec0.24(i32 0) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL:%.*]] = call zeroext i1 @even.spec.23(i32 0) #[[ATTR1]]
 ; CHECK-NEXT:    br i1 [[CALL]], label [[LAND_LHS_TRUE:%.*]], label [[LAND_END:%.*]]
 ; CHECK:       land.lhs.true:
-; CHECK-NEXT:    [[CALL1:%.*]] = call zeroext i1 @even.spec0.22(i32 1) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL1:%.*]] = call zeroext i1 @even.spec.21(i32 1) #[[ATTR1]]
 ; CHECK-NEXT:    br i1 [[CALL1]], label [[LAND_END]], label [[LAND_LHS_TRUE2:%.*]]
 ; CHECK:       land.lhs.true2:
-; CHECK-NEXT:    [[CALL3:%.*]] = call zeroext i1 @even.spec0.20(i32 2) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL3:%.*]] = call zeroext i1 @even.spec.19(i32 2) #[[ATTR1]]
 ; CHECK-NEXT:    br i1 [[CALL3]], label [[LAND_LHS_TRUE4:%.*]], label [[LAND_END]]
 ; CHECK:       land.lhs.true4:
-; CHECK-NEXT:    [[CALL5:%.*]] = call zeroext i1 @even.spec0(i32 3) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL5:%.*]] = call zeroext i1 @even.spec(i32 3) #[[ATTR1]]
 ; CHECK-NEXT:    br i1 [[CALL5]], label [[LAND_END]], label [[LAND_LHS_TRUE6:%.*]]
 ; CHECK:       land.lhs.true6:
-; CHECK-NEXT:    [[CALL7:%.*]] = call zeroext i1 @odd.spec0.17(i32 0) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL7:%.*]] = call zeroext i1 @odd.spec.16(i32 0) #[[ATTR1]]
 ; CHECK-NEXT:    br i1 [[CALL7]], label [[LAND_END]], label [[LAND_LHS_TRUE8:%.*]]
 ; CHECK:       land.lhs.true8:
-; CHECK-NEXT:    [[CALL9:%.*]] = call zeroext i1 @odd.spec0.15(i32 1) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL9:%.*]] = call zeroext i1 @odd.spec.14(i32 1) #[[ATTR1]]
 ; CHECK-NEXT:    br i1 [[CALL9]], label [[LAND_LHS_TRUE10:%.*]], label [[LAND_END]]
 ; CHECK:       land.lhs.true10:
-; CHECK-NEXT:    [[CALL11:%.*]] = call zeroext i1 @odd.spec0.13(i32 2) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL11:%.*]] = call zeroext i1 @odd.spec.12(i32 2) #[[ATTR1]]
 ; CHECK-NEXT:    br i1 [[CALL11]], label [[LAND_END]], label [[LAND_RHS:%.*]]
 ; CHECK:       land.rhs:
-; CHECK-NEXT:    [[CALL12:%.*]] = call zeroext i1 @odd.spec0(i32 3) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL12:%.*]] = call zeroext i1 @odd.spec(i32 3) #[[ATTR1]]
 ; CHECK-NEXT:    br label [[LAND_END]]
 ; CHECK:       land.end:
 ; CHECK-NEXT:    [[TMP0:%.*]] = phi i1 [ false, [[LAND_LHS_TRUE10]] ], [ false, [[LAND_LHS_TRUE8]] ], [ false, [[LAND_LHS_TRUE6]] ], [ false, [[LAND_LHS_TRUE4]] ], [ false, [[LAND_LHS_TRUE2]] ], [ false, [[LAND_LHS_TRUE]] ], [ false, [[ENTRY:%.*]] ], [ [[CALL12]], [[LAND_RHS]] ]
 ; CHECK-NEXT:    ret i1 [[TMP0]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@loop.spec0
-; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @loop(i32 5) #[[ATTR1]]
-; CHECK-NEXT:    [[CALL1:%.*]] = call i32 @loop(i32 5) #[[ATTR1]]
-; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[CALL]], [[CALL1]]
-; CHECK-NEXT:    ret i32 [[ADD]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@factorial.spec0
+; CHECK-LABEL: define {{[^@]+}}@factorial.spec
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i32 4, 2
@@ -287,7 +278,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i32 [[RETVAL_0]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@factorial.spec0.4
+; CHECK-LABEL: define {{[^@]+}}@factorial.spec.3
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i32 3, 2
@@ -304,7 +295,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i32 [[RETVAL_0]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@factorial.spec0.6
+; CHECK-LABEL: define {{[^@]+}}@factorial.spec.5
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i32 2, 2
@@ -321,7 +312,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i32 [[RETVAL_0]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@factorial.spec0.8
+; CHECK-LABEL: define {{[^@]+}}@factorial.spec.7
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i32 1, 2
@@ -338,7 +329,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i32 [[RETVAL_0]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@factorial.spec0.10
+; CHECK-LABEL: define {{[^@]+}}@factorial.spec.9
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i32 0, 2
@@ -355,7 +346,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i32 [[RETVAL_0]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@odd.spec0
+; CHECK-LABEL: define {{[^@]+}}@odd.spec
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 3, 0
@@ -373,7 +364,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@odd.spec0.13
+; CHECK-LABEL: define {{[^@]+}}@odd.spec.12
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 2, 0
@@ -391,7 +382,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@odd.spec0.15
+; CHECK-LABEL: define {{[^@]+}}@odd.spec.14
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 1, 0
@@ -409,7 +400,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@odd.spec0.17
+; CHECK-LABEL: define {{[^@]+}}@odd.spec.16
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 0, 0
@@ -427,7 +418,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@even.spec0
+; CHECK-LABEL: define {{[^@]+}}@even.spec
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 3, 0
@@ -445,7 +436,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@even.spec0.20
+; CHECK-LABEL: define {{[^@]+}}@even.spec.19
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 2, 0
@@ -463,7 +454,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@even.spec0.22
+; CHECK-LABEL: define {{[^@]+}}@even.spec.21
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 1, 0
@@ -481,7 +472,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@even.spec0.24
+; CHECK-LABEL: define {{[^@]+}}@even.spec.23
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i32 0, 0
@@ -497,4 +488,13 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    [[COND:%.*]] = phi i32 [ 1, [[COND_TRUE]] ], [ [[CONV]], [[COND_FALSE]] ]
 ; CHECK-NEXT:    [[TOBOOL:%.*]] = icmp ne i32 [[COND]], 0
 ; CHECK-NEXT:    ret i1 [[TOBOOL]]
+;
+;
+; CHECK-LABEL: define {{[^@]+}}@loop.spec
+; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @loop.spec(i32 5) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL1:%.*]] = call i32 @loop.spec(i32 5) #[[ATTR1]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i32 [[CALL]], [[CALL1]]
+; CHECK-NEXT:    ret i32 [[ADD]]
 ;

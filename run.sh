@@ -42,7 +42,7 @@ $BLD/opt $TMPDIR/input.ll -passes='module(always-specialize)' -S -o $TMPDIR/outp
 
 # $BLD/opt $TMPDIR/input.ll -passes='module(always-specialize,always-inline,deadargelim,instcombine,simplifycfg)' -S -o $TMPDIR/output.ll
 
-
+set +e # some fail, still want to keep trying for the others
 for c in $TESTDIR/*.c ; do
     ll=$(echo $c | sed 's_\(.*\).c_\1.ll_g')
     echo "Compiling $c -> $ll"

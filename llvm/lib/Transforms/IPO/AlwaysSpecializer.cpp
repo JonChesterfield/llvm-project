@@ -334,7 +334,7 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
   fprintf(stderr, "Running Always Specializer\n");
   bool Changed = false;
 
-  bool newpath = false;
+  bool newpath = true;
 
   // Go from a function to the specialisations of that function,
   // with a counter to allow testing whether more uses have been
@@ -374,7 +374,11 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
     // If the function has the attribute, start it from a count of 0
     for (Function &F : make_early_inc_range(M)) {
       if (functionEligible(F)) {
+        // fprintf(stderr, "Function eligible %s\n", F.getName().str().c_str());
         SpecMap[&F] = FunctionSpecializations();
+      }
+      else {
+        // fprintf(stderr, "Function rejected %s\n", F.getName().str().c_str());        
       }
     }
     if (SpecMap.size() == 0)
@@ -388,20 +392,35 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
         assert(spec == SpecMap[F]);
 
         {
-          // If F has no uses, don't need to specialise it
-          // If it has more uses than last time it was considered, want to check
+          // If F has no users, don't need to specialise it
+          // If it has more users than last time it was considered, want to recheck
           // them
           uint64_t state =
-              F->getNumUses(); // this is linear in the uses of the function :(
+            (unsigned)std::distance(F->user_begin(), F->user_end());
+          //F->getNumUses(); // this is linear in the uses of the function :(
+          fprintf(stderr, "Function %s, prevUses %lu, current uses %lu\n",
+                  F->getName().str().c_str(),
+                  SpecMap[F].prevCount,
+                  state);
           if (state <= SpecMap[F].prevCount) {
             break;
           }
           SpecMap[F].prevCount = state;
         }
 
+        fprintf(stderr, "Look at the uses of %s\n", F->getName().str().c_str());
         // Has at least one use we haven't looked at before
-        for (Use &u : F->uses()) {
+
+        for (User *u : make_early_inc_range(F->users())) {
+                    
           CallBase *CB = dyn_cast<CallBase>(u);
+
+          
+          if (!CB) {
+            fprintf(stderr, "Not a callbase\n");
+            continue;
+          }
+          
           if (!CB || !callEligible(*F, CB, ArgVec)) {
             continue;
           }
@@ -412,6 +431,8 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
             // one
             continue;
           }
+
+          fprintf(stderr, "Clone time\n");
 
           // Create a new static function. Doesn't have any uses yet.
           // Notably don't want to add it to the map we're iterating over.
@@ -437,7 +458,7 @@ bool AlwaysSpecializer::runOnModule(Module &M) {
     // new specialisations are used yet.
 
     for (auto &[F, spec] : SpecMap) {
-      for (Use &u : F->uses()) {
+      for (User *u : make_early_inc_range(F->users())) {
         CallBase *CB = dyn_cast<CallBase>(u);
         if (!CB || !callEligible(*F, CB, ArgVec)) {
           continue;

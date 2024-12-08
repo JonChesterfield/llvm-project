@@ -103,7 +103,7 @@ attributes #2 = { nobuiltin "no-builtins" }
 !1 = !{i32 8, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"frame-pointer", i32 2}
-!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git 8de87910aa5e588898756807e8075169fb6e166d)"}
+!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git b02a53b5a92bbc08352f2f70e5f6e216b7e57abb)"}
 ; CHECK-LABEL: define {{[^@]+}}@callee
 ; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]], i32 [[Y:%.*]], i32 alwaysspecialize [[Z:%.*]]) #[[ATTR0:[0-9]+]] {
 ; CHECK-NEXT:  entry:
@@ -115,7 +115,7 @@ attributes #2 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@first
 ; CHECK-SAME: (i32 [[A:%.*]], i32 [[B:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @callee.spec0.3(i32 42, i32 [[A]], i32 [[B]]) #[[ATTR2:[0-9]+]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @callee.spec.11(i32 42, i32 [[A]], i32 [[B]]) #[[ATTR2:[0-9]+]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
@@ -129,14 +129,14 @@ attributes #2 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@third
 ; CHECK-SAME: (i32 [[A:%.*]], i32 [[B:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @callee.spec2(i32 [[A]], i32 [[B]], i32 42) #[[ATTR2]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @callee.spec.9(i32 [[A]], i32 [[B]], i32 42) #[[ATTR2]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@both
 ; CHECK-SAME: (i32 [[A:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @callee.spec0.spec2(i32 21, i32 [[A]], i32 42) #[[ATTR2]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @callee.spec(i32 21, i32 [[A]], i32 42) #[[ATTR2]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
@@ -154,21 +154,21 @@ attributes #2 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@ptrfirst
 ; CHECK-SAME: (ptr [[A:%.*]], ptr [[B:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @ptrcallee.spec0.9(ptr @ptrfirst.x, ptr [[A]], ptr [[B]]) #[[ATTR2]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @ptrcallee.spec.5(ptr @ptrfirst.x, ptr [[A]], ptr [[B]]) #[[ATTR2]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@ptrboth
 ; CHECK-SAME: (ptr [[A:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @ptrcallee.spec0.7.spec2(ptr @ptrboth.x, ptr [[A]], ptr @ptrboth.y) #[[ATTR2]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @ptrcallee.spec.3(ptr @ptrboth.x, ptr [[A]], ptr @ptrboth.y) #[[ATTR2]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@ptrallsame
 ; CHECK-SAME: () #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @ptrcallee.spec0.spec2(ptr @ptrallsame.x, ptr @ptrallsame.x, ptr @ptrallsame.x) #[[ATTR2]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @ptrcallee.spec(ptr @ptrallsame.x, ptr @ptrallsame.x, ptr @ptrallsame.x) #[[ATTR2]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
@@ -182,53 +182,11 @@ attributes #2 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@devirtualisecaller
 ; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @virtualcall.spec0(ptr @virtualcallee, i32 [[X]]) #[[ATTR2]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @virtualcall.spec(ptr @virtualcallee, i32 [[X]]) #[[ATTR2]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@callee.spec0.3
-; CHECK-SAME: (i32 [[X:%.*]], i32 [[Y:%.*]], i32 alwaysspecialize [[Z:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 42, [[Z]]
-; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], [[Z]]
-; CHECK-NEXT:    ret i32 [[MUL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@callee.spec2
-; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]], i32 [[Y:%.*]], i32 [[Z:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[X]], 42
-; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], 42
-; CHECK-NEXT:    ret i32 [[MUL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@ptrcallee.spec0.9
-; CHECK-SAME: (ptr [[X:%.*]], ptr [[Y:%.*]], ptr alwaysspecialize [[Z:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr @ptrfirst.x, align 4
-; CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr [[Z]], align 4
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP0]], [[TMP1]]
-; CHECK-NEXT:    [[TMP2:%.*]] = load i32, ptr [[Z]], align 4
-; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], [[TMP2]]
-; CHECK-NEXT:    ret i32 [[MUL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@virtualcall.spec0
-; CHECK-SAME: (ptr [[FUNC:%.*]], i32 [[X:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @virtualcallee(i32 [[X]]) #[[ATTR2]]
-; CHECK-NEXT:    ret i32 [[CALL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@callee.spec0.spec2
-; CHECK-SAME: (i32 [[X:%.*]], i32 [[Y:%.*]], i32 [[Z:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 21, 42
-; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], 42
-; CHECK-NEXT:    ret i32 [[MUL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@ptrcallee.spec0.spec2
+; CHECK-LABEL: define {{[^@]+}}@ptrcallee.spec
 ; CHECK-SAME: (ptr [[X:%.*]], ptr [[Y:%.*]], ptr [[Z:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr @ptrallsame.x, align 4
@@ -239,7 +197,7 @@ attributes #2 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    ret i32 [[MUL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@ptrcallee.spec0.7.spec2
+; CHECK-LABEL: define {{[^@]+}}@ptrcallee.spec.3
 ; CHECK-SAME: (ptr [[X:%.*]], ptr [[Y:%.*]], ptr [[Z:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr @ptrboth.x, align 4
@@ -247,5 +205,47 @@ attributes #2 = { nobuiltin "no-builtins" }
 ; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP0]], [[TMP1]]
 ; CHECK-NEXT:    [[TMP2:%.*]] = load i32, ptr @ptrboth.y, align 4
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], [[TMP2]]
+; CHECK-NEXT:    ret i32 [[MUL]]
+;
+;
+; CHECK-LABEL: define {{[^@]+}}@ptrcallee.spec.5
+; CHECK-SAME: (ptr [[X:%.*]], ptr [[Y:%.*]], ptr alwaysspecialize [[Z:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr @ptrfirst.x, align 4
+; CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr [[Z]], align 4
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP0]], [[TMP1]]
+; CHECK-NEXT:    [[TMP2:%.*]] = load i32, ptr [[Z]], align 4
+; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], [[TMP2]]
+; CHECK-NEXT:    ret i32 [[MUL]]
+;
+;
+; CHECK-LABEL: define {{[^@]+}}@virtualcall.spec
+; CHECK-SAME: (ptr [[FUNC:%.*]], i32 [[X:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @virtualcallee(i32 [[X]]) #[[ATTR2]]
+; CHECK-NEXT:    ret i32 [[CALL]]
+;
+;
+; CHECK-LABEL: define {{[^@]+}}@callee.spec
+; CHECK-SAME: (i32 [[X:%.*]], i32 [[Y:%.*]], i32 [[Z:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 21, 42
+; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], 42
+; CHECK-NEXT:    ret i32 [[MUL]]
+;
+;
+; CHECK-LABEL: define {{[^@]+}}@callee.spec.9
+; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]], i32 [[Y:%.*]], i32 [[Z:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[X]], 42
+; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], 42
+; CHECK-NEXT:    ret i32 [[MUL]]
+;
+;
+; CHECK-LABEL: define {{[^@]+}}@callee.spec.11
+; CHECK-SAME: (i32 [[X:%.*]], i32 [[Y:%.*]], i32 alwaysspecialize [[Z:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 42, [[Z]]
+; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[ADD]], [[Z]]
 ; CHECK-NEXT:    ret i32 [[MUL]]
 ;

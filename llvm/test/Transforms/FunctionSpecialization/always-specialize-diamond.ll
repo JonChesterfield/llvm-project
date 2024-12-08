@@ -43,7 +43,7 @@ attributes #1 = { nobuiltin "no-builtins" }
 !1 = !{i32 8, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"frame-pointer", i32 2}
-!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git 8de87910aa5e588898756807e8075169fb6e166d)"}
+!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git b02a53b5a92bbc08352f2f70e5f6e216b7e57abb)"}
 ; CHECK-LABEL: define {{[^@]+}}@leaf
 ; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]], i32 alwaysspecialize [[Y:%.*]]) #[[ATTR0:[0-9]+]] {
 ; CHECK-NEXT:  entry:
@@ -54,64 +54,57 @@ attributes #1 = { nobuiltin "no-builtins" }
 ; CHECK-LABEL: define {{[^@]+}}@in_order
 ; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec0(i32 42, i32 [[X]]) #[[ATTR1:[0-9]+]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec.6(i32 42, i32 [[X]]) #[[ATTR1:[0-9]+]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@swapped
 ; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec1(i32 [[X]], i32 81) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec.4(i32 [[X]], i32 81) #[[ATTR1]]
 ; CHECK-NEXT:    ret i32 [[CALL]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@root
 ; CHECK-SAME: () #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @in_order.spec0(i32 81) #[[ATTR1]]
-; CHECK-NEXT:    [[CALL1:%.*]] = call i32 @swapped.spec0(i32 42) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @in_order.spec(i32 81) #[[ATTR1]]
+; CHECK-NEXT:    [[CALL1:%.*]] = call i32 @swapped.spec(i32 42) #[[ATTR1]]
 ; CHECK-NEXT:    [[MUL:%.*]] = mul nsw i32 [[CALL]], [[CALL1]]
 ; CHECK-NEXT:    ret i32 [[MUL]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@leaf.spec0
-; CHECK-SAME: (i32 [[X:%.*]], i32 alwaysspecialize [[Y:%.*]]) #[[ATTR0]] {
+; CHECK-LABEL: define {{[^@]+}}@in_order.spec
+; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 42, [[Y]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec(i32 42, i32 81) #[[ATTR1]]
+; CHECK-NEXT:    ret i32 [[CALL]]
+;
+;
+; CHECK-LABEL: define {{[^@]+}}@leaf.spec
+; CHECK-SAME: (i32 [[X:%.*]], i32 [[Y:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 42, 81
 ; CHECK-NEXT:    ret i32 [[ADD]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@leaf.spec1
+; CHECK-LABEL: define {{[^@]+}}@leaf.spec.4
 ; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]], i32 [[Y:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[X]], 81
 ; CHECK-NEXT:    ret i32 [[ADD]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@in_order.spec0
-; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
+; CHECK-LABEL: define {{[^@]+}}@leaf.spec.6
+; CHECK-SAME: (i32 [[X:%.*]], i32 alwaysspecialize [[Y:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec0.spec1(i32 42, i32 81) #[[ATTR1]]
-; CHECK-NEXT:    ret i32 [[CALL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@swapped.spec0
-; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec1.spec0(i32 42, i32 81) #[[ATTR1]]
-; CHECK-NEXT:    ret i32 [[CALL]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@leaf.spec0.spec1
-; CHECK-SAME: (i32 [[X:%.*]], i32 [[Y:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 42, 81
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 42, [[Y]]
 ; CHECK-NEXT:    ret i32 [[ADD]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@leaf.spec1.spec0
-; CHECK-SAME: (i32 [[X:%.*]], i32 [[Y:%.*]]) #[[ATTR0]] {
+; CHECK-LABEL: define {{[^@]+}}@swapped.spec
+; CHECK-SAME: (i32 [[X:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 42, 81
-; CHECK-NEXT:    ret i32 [[ADD]]
+; CHECK-NEXT:    [[CALL:%.*]] = call i32 @leaf.spec(i32 42, i32 81) #[[ATTR1]]
+; CHECK-NEXT:    ret i32 [[CALL]]
 ;
