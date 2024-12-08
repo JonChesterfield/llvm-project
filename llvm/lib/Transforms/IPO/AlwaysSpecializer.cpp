@@ -21,7 +21,6 @@
 
 #include "llvm/Support/CommandLine.h"
 
-
 #include <cstdio> // todo
 #include <tuple>
 
@@ -31,40 +30,39 @@ using namespace llvm;
 
 namespace {
 
-cl::opt<bool> EnableAlwaysSpecialize(
-    "enable-always-specialize",
-    cl::desc("Enable the always specialize pass"),
-    cl::init(true), cl::Hidden);
+cl::opt<bool>
+    EnableAlwaysSpecialize("enable-always-specialize",
+                           cl::desc("Enable the always specialize pass"),
+                           cl::init(true), cl::Hidden);
 
-  // Scalar/LoopStrengthReduce.cpp and Vectorize/VPlan.h both have one of these
-  // Try to put a templated version under DenseMapInfo.h and remove them
+// Scalar/LoopStrengthReduce.cpp and Vectorize/VPlan.h both have one of these
+// Try to put a templated version under DenseMapInfo.h and remove them
 
-  template <typename T,
-            unsigned N = CalculateSmallVectorDefaultInlinedElements<T>::value>  
-  struct SmallVectorDenseMapInfo {
-    static SmallVector<T *, N> getEmptyKey() {
-      SmallVector<T *, N>  V;
-      V.push_back(reinterpret_cast<T *>(-1));
-      return V;
-    }
+template <typename T,
+          unsigned N = CalculateSmallVectorDefaultInlinedElements<T>::value>
+struct SmallVectorDenseMapInfo {
+  static SmallVector<T *, N> getEmptyKey() {
+    SmallVector<T *, N> V;
+    V.push_back(reinterpret_cast<T *>(-1));
+    return V;
+  }
 
-    static SmallVector<T *, N> getTombstoneKey() {
-      SmallVector<T *, N> V;
-      V.push_back(reinterpret_cast<T *>(-2));
-      return V;
-    }
+  static SmallVector<T *, N> getTombstoneKey() {
+    SmallVector<T *, N> V;
+    V.push_back(reinterpret_cast<T *>(-2));
+    return V;
+  }
 
-    static unsigned getHashValue(const SmallVector<T *, N> &V) {
-      return static_cast<unsigned>(hash_combine_range(V.begin(), V.end()));
-    }
+  static unsigned getHashValue(const SmallVector<T *, N> &V) {
+    return static_cast<unsigned>(hash_combine_range(V.begin(), V.end()));
+  }
 
-    static bool isEqual(const SmallVector<T *, N> &LHS,
-                        const SmallVector<T *, N> &RHS) {
-      return LHS == RHS;
-    }
-  };
+  static bool isEqual(const SmallVector<T *, N> &LHS,
+                      const SmallVector<T *, N> &RHS) {
+    return LHS == RHS;
+  }
+};
 
-  
 class AlwaysSpecializer : public ModulePass {
 public:
   static char ID;
@@ -77,20 +75,34 @@ public:
   bool runOnFunction(Module &M, Function &F);
   bool runOnModule(Module &M) override;
 
-  static bool functionEligible(const Function &F)
-  {
-    if (F.isDeclaration()) return false;
+  static Constant *getCandidateConstant(Value *V) {
+    return dyn_cast<Constant>(V);
+  }
 
-    // TODO: Is this the check?
+  static bool functionEligible(const Function &F) {
+    if (F.isDeclaration()) // redundant with exact defn?
+      return false;
+
+    if (F.use_empty())
+      return false;
+
+    
+    // E.g. leave linkonce_odr alone
     if (!F.hasExactDefinition())
       return false;
 
-    // How about F.hasFnAttribute(Attribute::Naked)
-    if (F.isIntrinsic()) return false; // redundant with above?
+    // Can't sensibly clone naked functions (todo, does clone properly error on this?)
+    if (F.hasFnAttribute(Attribute::Naked))
+      return false;
+
     
+    // How about F.hasFnAttribute(Attribute::Naked)
+    if (F.isIntrinsic())
+      return false; // redundant with above?
+
     size_t arity = F.arg_size();
-  
-    for (size_t i = 0; i < arity; i++) {      
+
+    for (size_t i = 0; i < arity; i++) {
       if (F.hasParamAttribute(i, llvm::Attribute::AlwaysSpecialize)) {
         return true;
       }
@@ -98,31 +110,61 @@ public:
 
     return false;
   }
-  
+
+  template <unsigned N>
+  static bool callEligible(const Function &F, const CallBase *CB,
+                           SmallVector<Constant *, N> &out) {
+    size_t arity = F.arg_size();
+    if (CB->getCalledOperand() != &F)
+      return false;
+
+    if (CB->getFunctionType() != F.getFunctionType()) return false;
+
+    // redundant with the above?
+    if (CB->arg_size() != arity)
+      return false; // todo
+
+    bool eligible = false;
+
+    out.clear();
+    for (size_t i = 0; i < arity; i++) {
+      Constant *Arg = getCandidateConstant(CB->getArgOperand(i));
+      if (Arg && F.hasParamAttribute(i, llvm::Attribute::AlwaysSpecialize)) {
+        // TODO: Need to check that the arg is used by the function as well
+        eligible = true;
+        out.push_back(Arg);
+      } else {
+        out.push_back(nullptr);
+      }
+    }
+
+    return eligible;
+  }
+
   Function *cloneCandidateFunction(Function *F, unsigned ArgNo, Constant *C);
-  Function *cloneCandidateFunction(Function *F, SmallVector<Constant*, 4> C);
+  Function *cloneCandidateFunction(Function *F, SmallVector<Constant *, 4> C);
 
   using KeyType = std::tuple<Function *, unsigned, Constant *>;
 
   SmallVector<Function *, 8> worklist;
   DenseMap<KeyType, Function *> cache;
 
-
   // Looking to run without a worklist
-  struct FunctionSpecializations
-  {
+  struct FunctionSpecializations {
     size_t prevCount = 0;
-    DenseMap<SmallVector<Constant*, 4>, Function*, SmallVectorDenseMapInfo<Constant, 4>> specs;
+    DenseMap<SmallVector<Constant *, 4>, Function *,
+             SmallVectorDenseMapInfo<Constant, 4>>
+        specs;
   };
 
-  // Probably needs info about smallvector, might need to be on a pointer not a ref
-  DenseMap<Function*,
-           FunctionSpecializations>  SpecMap;
-
+  // Probably needs info about smallvector, might need to be on a pointer not a
+  // ref
+  DenseMap<Function *, FunctionSpecializations> SpecMap;
 };
 
-static Constant *getCandidateConstant(Value *V) {
-  return dyn_cast<Constant>(V);
+static bool operator==(const AlwaysSpecializer::FunctionSpecializations &lhs,
+                       const AlwaysSpecializer::FunctionSpecializations &rhs) {
+  return lhs.prevCount == rhs.prevCount && lhs.specs == rhs.specs;
 }
 
 Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, unsigned ArgNo,
@@ -142,9 +184,15 @@ Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, unsigned ArgNo,
   // to specify where to insert it - todo, look for a more precise call
   ValueToValueMapTy Mappings;
   Function *Clone = CloneFunction(F, Mappings);
+  Clone->copyAttributesFrom(F);
+  
+  Clone->setComdat(F->getComdat()); // if comdat, should we be refusing to clone it?
+
   Clone->setName(F->getName() + ".spec" + Twine(ArgNo));
   Clone->setLinkage(GlobalValue::InternalLinkage);
 
+  // hack on F->getParent()->getFunctionList()? 
+  
   // Gives termination when specialising multiple arguments
   Clone->removeParamAttr(ArgNo, llvm::Attribute::AlwaysSpecialize);
 
@@ -157,62 +205,64 @@ Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, unsigned ArgNo,
   return Clone;
 }
 
-  __attribute__((used))
-  Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, SmallVector<Constant*, 4> C){
+__attribute__((used)) Function *
+AlwaysSpecializer::cloneCandidateFunction(Function *F,
+                                          SmallVector<Constant *, 4> C) {
 
-  for (size_t i = 0; i < C.size(); i++)
-    {
-      if (C[i] != 0) goto good;
-    }
+  for (size_t i = 0; i < C.size(); i++) {
+    if (C[i] != 0)
+      goto good;
+  }
 
-    return 0;
-    
-  good:;
-    
-#if 1
-    // Find the existing specialisations of F
-    auto r = SpecMap.find(F);
-    assert(r != SpecMap.end());
+  return 0;
 
-    FunctionSpecializations &existing = r->second;
+good:;
 
-    // See if we've already created one for this argument vector
-    auto r2 = existing.specs.find(C);
-    if (r2 != existing.specs.end()) {
-      fprintf(stderr, "Already spawned\n");
-      return r2->second;
-    }
+  // Find the existing specialisations of F
+  auto r = SpecMap.find(F);
+  assert(r != SpecMap.end());
 
-    // create a name based on the vector
+  FunctionSpecializations &existing = r->second;
+
+  // See if we've already created one for this argument vector
+  auto r2 = existing.specs.find(C);
+  if (r2 != existing.specs.end()) {
+    fprintf(stderr, "Already spawned\n");
+    return r2->second;
+  }
+
+  // create a name based on the vector
   ValueToValueMapTy Mappings;
   Function *Clone = CloneFunction(F, Mappings);
+  Clone->copyAttributesFrom(F);
+  Clone->setComdat(F->getComdat()); // if comdat, should we be refusing to clone it?
+  
   Clone->setName(F->getName() + ".spec");
   Clone->setLinkage(GlobalValue::InternalLinkage);
 
+  // hack on F->getParent()->getFunctionList()?
+  
   // Replace uses of the argument with the constant
   // Strip the specialize from the parameters that are being replaced
-  for (size_t i = 0; i < C.size(); i++)
-    {
-      Constant * c = C[i];
-      if (c != 0)
-        {
-          Clone->removeParamAttr(i, llvm::Attribute::AlwaysSpecialize);
+  for (size_t i = 0; i < C.size(); i++) {
+    Constant *c = C[i];
+    if (c != 0) {
+      Clone->removeParamAttr(i, llvm::Attribute::AlwaysSpecialize);
 
-          Argument *V = Clone->getArg(i);
-          V->replaceAllUsesWith(c); // this can turn indirect calls into direct         
-        }
+      Argument *V = Clone->getArg(i);
+      if (V->use_empty()) {
+        fprintf(stderr, "Um, argument has no uses - do we want to be replacing it?\n");
+      }
+      
+      V->replaceAllUsesWith(c); // this can turn indirect calls into direct
     }
-
-   existing.specs.insert(std::make_pair(C, Clone));
-
-    return Clone;
-  #endif
-
-      return 0;
-
   }
 
-  
+  existing.specs.insert(std::make_pair(C, Clone));
+
+  return Clone;
+}
+
 bool AlwaysSpecializer::runOnFunctionArgument(Module &M, Function &F,
                                               unsigned ArgNo) {
   bool Changed = false;
@@ -261,11 +311,10 @@ bool AlwaysSpecializer::runOnFunctionArgument(Module &M, Function &F,
   return Changed;
 }
 
-
 bool AlwaysSpecializer::runOnFunction(Module &M, Function &F) {
   bool Changed = false;
   size_t arity = F.arg_size();
-  
+
   for (size_t i = 0; i < arity; i++) {
     // On all attributes, not just the first alwaysspecialize
     if (F.hasParamAttribute(i, llvm::Attribute::AlwaysSpecialize)) {
@@ -277,165 +326,177 @@ bool AlwaysSpecializer::runOnFunction(Module &M, Function &F) {
 
 bool AlwaysSpecializer::runOnModule(Module &M) {
 
-  if (!EnableAlwaysSpecialize)
-    {
-      fprintf(stderr, "Disabled Always Specializer\n");
-      return false;
-    }
-  
+  if (!EnableAlwaysSpecialize) {
+    fprintf(stderr, "Disabled Always Specializer\n");
+    return false;
+  }
+
   fprintf(stderr, "Running Always Specializer\n");
   bool Changed = false;
 
+  bool newpath = false;
 
   // Go from a function to the specialisations of that function,
   // with a counter to allow testing whether more uses have been
   // added since the current set of specialisations were chosen
 
-  #if 0
+  if (newpath) {
 
-  // Idea here is to run to fixpoint without ever leaving multiple equivalent clones
-  // E.g. want foo(x, 4) and foo(3, y) to and up resolved to the same function if x=3 and y=4
-  // regardless of the path taken to notice the call sites have the same arguments
-  // Thus two passes - the first identifies call sites with constant arguments, including
-  // those uncovered by previous specialisations - without changing any existing call sites.
-  //
-  // That is, the new specialisations might contain calls to the original function set but
-  // no function, original or cloned, contains any calls into the specialisations.
-  // That ensures that later lookups hit in the same cache since they're keyed from the original
-  // functions, thus no extra copies of equivalent functions are created.
-  //
-  // The mechanism for resolving the fixpoint is to actually instantiate the specialisations.
-  // In some cases, this will lead to creating functions that ultimately prove to be unused,
-  // in which case they're deleted.
-  //
-  //
-  // If the developer requests exponential growth of code though this annotation, that's what
-  // this pass will produce. The worst case is where every call to a function is made with a
-  // distinct constant argument, in which case every call site will get it's own specialisation
-  // which is only used there. The inliner will then recognise that as free to inline and the
-  // overall behaviour, including implied code growth, is that of always_inline.
-  //
-  // In other cases, this is a way to get the benefit of specialisation with less code size
-  // than always_inline implies.
+    // Idea here is to run to fixpoint without ever leaving multiple equivalent
+    // clones E.g. want foo(x, 4) and foo(3, y) to and up resolved to the same
+    // function if x=3 and y=4 regardless of the path taken to notice the call
+    // sites have the same arguments Thus two passes - the first identifies call
+    // sites with constant arguments, including those uncovered by previous
+    // specialisations - without changing any existing call sites.
+    //
+    // That is, the new specialisations might contain calls to the original
+    // function set but no function, original or cloned, contains any calls into
+    // the specialisations. That ensures that later lookups hit in the same
+    // cache since they're keyed from the original functions, thus no extra
+    // copies of equivalent functions are created.
+    //
+    // The mechanism for resolving the fixpoint is to actually instantiate the
+    // specialisations. In some cases, this will lead to creating functions that
+    // ultimately prove to be unused, in which case they're deleted.
+    //
+    //
+    // If the developer requests exponential growth of code though this
+    // annotation, that's what this pass will produce. The worst case is where
+    // every call to a function is made with a distinct constant argument, in
+    // which case every call site will get it's own specialisation which is only
+    // used there. The inliner will then recognise that as free to inline and
+    // the overall behaviour, including implied code growth, is that of
+    // always_inline.
+    //
+    // In other cases, this is a way to get the benefit of specialisation with
+    // less code size than always_inline implies.
 
-
-  // If the function has the attribute, start it from a count of 0
-  for (Function &F : make_early_inc_range(M))
-    {
-      if (functionEligible(F))
-        {
-          SpecMap[F] = FunctionSpecializations();
-        }
+    // If the function has the attribute, start it from a count of 0
+    for (Function &F : make_early_inc_range(M)) {
+      if (functionEligible(F)) {
+        SpecMap[&F] = FunctionSpecializations();
+      }
     }
-  if (SpecMap.size() == 0) return false;
+    if (SpecMap.size() == 0)
+      return false;
 
+    SmallVector<Constant *, 4> ArgVec;
 
-  while (true)
-    {
-    size_t added = 0;
-    for (auto &[F, spec] : SpecMap)
-      {
+    while (true) {
+      size_t added = 0;
+      for (auto &[F, spec] : SpecMap) {
+        assert(spec == SpecMap[F]);
+
         {
           // If F has no uses, don't need to specialise it
-          // If it has more uses than last time it was considered, want to check them
-          uint64_t state = F.getNumUses(); // this is linear in the uses of the function :(
-          if (state <= SpecMap[F].prevCount)
-            {
-              break;
-            }
+          // If it has more uses than last time it was considered, want to check
+          // them
+          uint64_t state =
+              F->getNumUses(); // this is linear in the uses of the function :(
+          if (state <= SpecMap[F].prevCount) {
+            break;
+          }
           SpecMap[F].prevCount = state;
         }
 
         // Has at least one use we haven't looked at before
-        for (Use &u: F.uses())
-          {
-            if (!isCallWithConstants(u))
-              {
-                // Only care about calls we can specialise
-                continue;
-              }
-
-            
-            Args = getConstantArgs(u);
-            Spec & s = SpecMap[F].specs[Args];
-
-            // If we've already specialised wrt this argument set, reuse that one
-            if (s.target) continue;
-
-            // Create a new static function. Doesn't have any uses yet.
-            // Notably don't want to add it to the map we're iterating over.
-            s.target = maybeCloneWithRespectToArgs(Args);
-
-            // clone returns null if the function wasn't worth specialising,
-            // in particular because the constant arguments in question were unused
-            // that's important for making this pass a no-op if it's run multiple
-            // times without dead argument elimination
-            if (s.target) added += 1;
+        for (Use &u : F->uses()) {
+          CallBase *CB = dyn_cast<CallBase>(u);
+          if (!CB || !callEligible(*F, CB, ArgVec)) {
+            continue;
           }
+
+          auto maybe = SpecMap[F].specs.find(ArgVec);
+          if (maybe != SpecMap[F].specs.end()) {
+            // If we've already specialised wrt this argument set, reuse that
+            // one
+            continue;
+          }
+
+          // Create a new static function. Doesn't have any uses yet.
+          // Notably don't want to add it to the map we're iterating over.
+          Function *clone = cloneCandidateFunction(F, ArgVec);
+          // clone should return null if the function wasn't worth specialising,
+          // or at least something should catch that.
+          // in particular because the constant arguments in question were
+          // unused that's important for making this pass a no-op if it's run
+          // multiple times without dead argument elimination
+          if (clone) {
+            SpecMap[F].specs.insert(std::make_pair(ArgVec, clone));
+            added += 1;
+          }
+        }
       }
 
-    if (added == 0) break;
-  }
+      if (added == 0)
+        break;
+    }
 
-  // We now have a map of all functions with this attribute to specialisations,
-  // indexed by the call site constant arguments. None of the new specialisations
-  // are used yet.
+    // We now have a map of all functions with this attribute to
+    // specialisations, indexed by the call site constant arguments. None of the
+    // new specialisations are used yet.
 
+    for (auto &[F, spec] : SpecMap) {
+      for (Use &u : F->uses()) {
+        CallBase *CB = dyn_cast<CallBase>(u);
+        if (!CB || !callEligible(*F, CB, ArgVec)) {
+          continue;
+        }
 
-    for (Function &F : SpecMap)
-      {
-        for (Use &u: F.uses())
-          {
-            if (!isCallWithConstants(u))
-              {
-                continue;
-              }
+        // this is probably specmap[f]
+        assert(spec == SpecMap[F]);
+        Function *target = SpecMap[F].specs[ArgVec];
+        assert(target);
 
-            Args = getConstantArgs(u);
-            Spec & s = SpecMap[F].specs[Args];
-            assert(s.target);
-
-            rewiteCallToTarget(s.target);
-          }
+        CB->setCalledFunction(target);
       }
+
+      (void)spec;
+    }
 
     // Some of the specialisations that were created when there was a call site
     // later turned out to be unused. In particular, where the call site takes
-    // two arguments, one already constant, and the second also turns out to be constant
-    // partway through specialisation, the call to constant, unknown may be dead
+    // two arguments, one already constant, and the second also turns out to be
+    // constant partway through specialisation, the call to constant, unknown
+    // may be dead
+
+#if 0
     removeDeadSpecialisations();
-  
 #endif
-  
-  // One problem here is that specialising on an argument, followed by RAUW,
-  // can convert an indirect call into a direct call, where the latter has
-  // explict specialise attributes, and thus should be fed back into the pass
 
-  // Maybe check the constant against the known functions, or just push it onto
-  // the worklist
+    return true;
 
-  // On each existing function. Don't need to push the existing ones into the
-  // worklist
-  for (Function &F : make_early_inc_range(M))
-    {
+  } else { // old path
+
+    // One problem here is that specialising on an argument, followed by RAUW,
+    // can convert an indirect call into a direct call, where the latter has
+    // explict specialise attributes, and thus should be fed back into the pass
+
+    // Maybe check the constant against the known functions, or just push it
+    // onto the worklist
+
+    // On each existing function. Don't need to push the existing ones into the
+    // worklist
+    for (Function &F : make_early_inc_range(M)) {
       Changed |= runOnFunction(M, F);
     }
 
-  if (!Changed)
-    return false;
+    if (!Changed)
+      return false;
 
-  // Then on any functions created by this pass (for > 1 specialized argument)
-  while (!worklist.empty()) {
-    Function *F = worklist.pop_back_val();
-    Changed |= runOnFunction(M, *F);
+    // Then on any functions created by this pass (for > 1 specialized argument)
+    while (!worklist.empty()) {
+      Function *F = worklist.pop_back_val();
+      Changed |= runOnFunction(M, *F);
+    }
+
+    // Created functions that were specialised further may now be unused
+    for (auto &[_, f] : cache)
+      if (f->use_empty())
+        f->eraseFromParent();
+
+    return true;
   }
-
-  // Created functions that were specialised further may now be unused
-  for (auto &[_, f] : cache)
-    if (f->use_empty())
-      f->eraseFromParent();
-
-  return true;
 }
 
 } // namespace
