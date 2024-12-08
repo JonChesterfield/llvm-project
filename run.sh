@@ -55,7 +55,7 @@ for c in $TESTDIR/*.c ; do
     $BLD/opt --passes=mem2reg $ll.c.tmp -S -o $ll.opt.tmp
     cat $ll.opt.tmp | egrep -v '; ModuleID|source_filename' >> $ll
     sed -i 's_noundef __g' $ll
-    # rm $ll.*.tmp
+    rm $ll.*.tmp
     llvm_regen.sh $(echo $ll | sed 's_.*llvm-project/llvm/test/__g')
     # Run that single test case
     $BLD/llvm-lit -v $ll

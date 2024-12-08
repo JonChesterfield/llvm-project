@@ -103,7 +103,7 @@ attributes #2 = { nobuiltin "no-builtins" }
 !1 = !{i32 8, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"frame-pointer", i32 2}
-!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git 1b3c5054e9e404951e66978375cade2fabd6f926)"}
+!4 = !{!"clang version 20.0.0git (git@github.com:llvm/llvm-project.git 8de87910aa5e588898756807e8075169fb6e166d)"}
 ; CHECK-LABEL: define {{[^@]+}}@callee
 ; CHECK-SAME: (i32 alwaysspecialize [[X:%.*]], i32 [[Y:%.*]], i32 alwaysspecialize [[Z:%.*]]) #[[ATTR0:[0-9]+]] {
 ; CHECK-NEXT:  entry:
