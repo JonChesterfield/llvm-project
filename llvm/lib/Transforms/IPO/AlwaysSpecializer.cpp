@@ -36,6 +36,34 @@ cl::opt<bool> EnableAlwaysSpecialize(
     cl::desc("Enable the always specialize pass"),
     cl::init(true), cl::Hidden);
 
+  // Scalar/LoopStrengthReduce.cpp and Vectorize/VPlan.h both have one of these
+  // Try to put a templated version under DenseMapInfo.h and remove them
+
+  template <typename T,
+            unsigned N = CalculateSmallVectorDefaultInlinedElements<T>::value>  
+  struct SmallVectorDenseMapInfo {
+    static SmallVector<T *, N> getEmptyKey() {
+      SmallVector<T *, N>  V;
+      V.push_back(reinterpret_cast<T *>(-1));
+      return V;
+    }
+
+    static SmallVector<T *, N> getTombstoneKey() {
+      SmallVector<T *, N> V;
+      V.push_back(reinterpret_cast<T *>(-2));
+      return V;
+    }
+
+    static unsigned getHashValue(const SmallVector<T *, N> &V) {
+      return static_cast<unsigned>(hash_combine_range(V.begin(), V.end()));
+    }
+
+    static bool isEqual(const SmallVector<T *, N> &LHS,
+                        const SmallVector<T *, N> &RHS) {
+      return LHS == RHS;
+    }
+  };
+
   
 class AlwaysSpecializer : public ModulePass {
 public:
@@ -72,7 +100,7 @@ public:
   }
   
   Function *cloneCandidateFunction(Function *F, unsigned ArgNo, Constant *C);
-  Function *cloneCandidateFunction(Function &F, SmallVector<Constant*, 4> C);
+  Function *cloneCandidateFunction(Function *F, SmallVector<Constant*, 4> C);
 
   using KeyType = std::tuple<Function *, unsigned, Constant *>;
 
@@ -84,11 +112,12 @@ public:
   struct FunctionSpecializations
   {
     size_t prevCount = 0;
-    DenseMap<SmallVector<Constant*, 4>, Function*> specs;
+    DenseMap<SmallVector<Constant*, 4>, Function*, SmallVectorDenseMapInfo<Constant, 4>> specs;
   };
 
   // Probably needs info about smallvector, might need to be on a pointer not a ref
-  // DenseMap<Function&, FunctionSpecializations>  SpecMap;
+  DenseMap<Function*,
+           FunctionSpecializations>  SpecMap;
 
 };
 
@@ -129,7 +158,7 @@ Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, unsigned ArgNo,
 }
 
   __attribute__((used))
-  Function *AlwaysSpecializer::cloneCandidateFunction(Function &F, SmallVector<Constant*, 4> C){
+  Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, SmallVector<Constant*, 4> C){
 
   for (size_t i = 0; i < C.size(); i++)
     {
@@ -140,25 +169,24 @@ Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, unsigned ArgNo,
     
   good:;
     
-#if 0
+#if 1
     // Find the existing specialisations of F
     auto r = SpecMap.find(F);
     assert(r != SpecMap.end());
 
     FunctionSpecializations &existing = r->second;
 
-    DenseMap<SmallVector<Constant*, 4>, Function*> specs = existing.specs;
-
     // See if we've already created one for this argument vector
     auto r2 = existing.specs.find(C);
     if (r2 != existing.specs.end()) {
+      fprintf(stderr, "Already spawned\n");
       return r2->second;
     }
 
     // create a name based on the vector
   ValueToValueMapTy Mappings;
-  Function *Clone = CloneFunction(&F, Mappings);
-  Clone->setName(F.getName() + ".spec");
+  Function *Clone = CloneFunction(F, Mappings);
+  Clone->setName(F->getName() + ".spec");
   Clone->setLinkage(GlobalValue::InternalLinkage);
 
   // Replace uses of the argument with the constant
@@ -175,7 +203,7 @@ Function *AlwaysSpecializer::cloneCandidateFunction(Function *F, unsigned ArgNo,
         }
     }
 
-  // r->insert(std::make_pair(C, Clone));
+   existing.specs.insert(std::make_pair(C, Clone));
 
     return Clone;
   #endif
