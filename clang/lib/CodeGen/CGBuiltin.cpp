@@ -20650,13 +20650,27 @@ Value *CodeGenFunction::EmitAMDGPUBuiltinExpr(unsigned BuiltinID,
     return emitRangedBuiltin(*this, Intrinsic::amdgcn_workitem_id_z, 0, 1024);
 
   // amdgcn workgroup size
+#if 0
+  // Pass off to lowering pass. Works fine, upsets some clang codegen tests
+  case AMDGPU::BI__builtin_amdgcn_workgroup_size_x:
+    return Builder.CreateCall(CGM.getIntrinsic(Intrinsic::gpu_num_threads_x, {}));
+  case AMDGPU::BI__builtin_amdgcn_workgroup_size_y:
+    return Builder.CreateCall(CGM.getIntrinsic(Intrinsic::gpu_num_threads_y, {}));
+  case AMDGPU::BI__builtin_amdgcn_workgroup_size_z:
+    return Builder.CreateCall(CGM.getIntrinsic(Intrinsic::gpu_num_threads_z, {}));
+#else
+  // lower here
   case AMDGPU::BI__builtin_amdgcn_workgroup_size_x:
     return EmitAMDGPUWorkGroupSize(*this, 0);
   case AMDGPU::BI__builtin_amdgcn_workgroup_size_y:
     return EmitAMDGPUWorkGroupSize(*this, 1);
   case AMDGPU::BI__builtin_amdgcn_workgroup_size_z:
     return EmitAMDGPUWorkGroupSize(*this, 2);
+#endif
 
+#if 1
+  // Shouldn't need this at all but the spirv64-amd-amdhsa triple expects
+  // the intrinsics to be expanded and I don't currently want to touch that
   // amdgcn grid size
   case AMDGPU::BI__builtin_amdgcn_grid_size_x:
     return EmitAMDGPUGridSize(*this, 0);
@@ -20664,6 +20678,7 @@ Value *CodeGenFunction::EmitAMDGPUBuiltinExpr(unsigned BuiltinID,
     return EmitAMDGPUGridSize(*this, 1);
   case AMDGPU::BI__builtin_amdgcn_grid_size_z:
     return EmitAMDGPUGridSize(*this, 2);
+#endif
 
   // r600 intrinsics
   case AMDGPU::BI__builtin_r600_recipsqrt_ieee:

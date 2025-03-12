@@ -83,6 +83,7 @@
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/JumpThreading.h"
+#include "llvm/Transforms/Scalar/LowerGPUIntrinsic.h"
 #include "llvm/Transforms/Utils/Debugify.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 #include <limits>
@@ -1041,6 +1042,7 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
 
     // Register callbacks to schedule sanitizer passes at the appropriate part
     // of the pipeline.
+
     if (LangOpts.Sanitize.has(SanitizerKind::LocalBounds))
       PB.registerScalarOptimizerLateEPCallback([this](FunctionPassManager &FPM,
                                                       OptimizationLevel Level) {
@@ -1096,6 +1098,15 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
         MPM.addPass(createModuleToFunctionPassAdaptor(MemProfilerPass()));
         MPM.addPass(ModuleMemProfilerPass());
       });
+    }
+
+    if (TargetTriple.isAMDGPU() || TargetTriple.isNVPTX()) {
+      // Need to register before the buildPerModuleDefaultPipeline as that's
+      // when it runs
+      PB.registerOptimizerEarlyEPCallback(
+          [](ModulePassManager &MPM, OptimizationLevel, ThinOrFullLTOPhase) {
+            MPM.addPass(LowerGPUIntrinsicPass());
+          });
     }
 
     if (CodeGenOpts.FatLTO) {

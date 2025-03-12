@@ -21,49 +21,142 @@
 #if defined(__HIP__) || defined(__CUDA__)
 #define _DEFAULT_FN_ATTRS __attribute__((device))
 #else
-#define _DEFAULT_FN_ATTRS
+#define _DEFAULT_FN_ATTRS __attribute((used /*,noinline*/))
 #endif
 #endif
 
-#include <stdint.h>
+#if !defined(JC_USE_COMPILER_BUILTINS)
+// #error "Using wrong driver"
+#define JC_USE_COMPILER_BUILTINS 0
+#endif
 
 #if !defined(__cplusplus)
 _Pragma("push_macro(\"bool\")");
 #define bool _Bool
 #endif
 
-_Pragma("omp begin declare target device_type(nohost)");
-_Pragma("omp begin declare variant match(device = {kind(gpu)})");
+#include <stdint.h>
 
-// Forward declare a few functions for the implementation header.
+#if JC_USE_COMPILER_BUILTINS
 
-// Returns a bitmask marking all lanes that have the same value of __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_any_u32_impl(uint64_t __lane_mask, uint32_t __x);
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_blocks_x(void) {
+  return __builtin_gpu_num_blocks_x();
+}
 
-// Returns a bitmask marking all lanes that have the same value of __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_any_u64_impl(uint64_t __lane_mask, uint64_t __x);
+// Returns the number of workgroups in the 'y' dimension of the grid.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_blocks_y(void) {
+  return __builtin_gpu_num_blocks_y();
+}
 
-// Returns the current lane mask if every lane contains __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_all_u32_impl(uint64_t __lane_mask, uint32_t __x);
+// Returns the number of workgroups in the 'z' dimension of the grid.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_blocks_z(void) {
+  return __builtin_gpu_num_blocks_z();
+}
 
-// Returns the current lane mask if every lane contains __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_all_u64_impl(uint64_t __lane_mask, uint64_t __x);
+// Returns the 'x' dimension of the current AMD workgroup's id.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_block_id_x(void) {
+  return __builtin_gpu_block_id_x();
+}
 
-_Pragma("omp end declare variant");
-_Pragma("omp end declare target");
+// Returns the 'y' dimension of the current AMD workgroup's id.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_block_id_y(void) {
+  return __builtin_gpu_block_id_y();
+}
+
+// Returns the 'z' dimension of the current AMD workgroup's id.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_block_id_z(void) {
+  return __builtin_gpu_block_id_z();
+}
+
+// Returns the number of workitems in the 'x' dimension.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_threads_x(void) {
+  return __builtin_gpu_num_threads_x();
+}
+
+// Returns the number of workitems in the 'y' dimension.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_threads_y(void) {
+  return __builtin_gpu_num_threads_y();
+}
+
+// Returns the number of workitems in the 'z' dimension.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_threads_z(void) {
+  return __builtin_gpu_num_threads_z();
+}
+
+// Returns the 'x' dimension id of the workitem in the current AMD workgroup.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_thread_id_x(void) {
+  return __builtin_gpu_thread_id_x();
+}
+
+// Returns the 'y' dimension id of the workitem in the current AMD workgroup.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_thread_id_y(void) {
+  return __builtin_gpu_thread_id_y();
+}
+
+// Returns the 'z' dimension id of the workitem in the current AMD workgroup.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_thread_id_z(void) {
+  return __builtin_gpu_thread_id_z();
+}
+
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_lanes(void) {
+  return __builtin_gpu_num_lanes();
+}
+
+// Returns the id of the thread inside of an AMD wavefront executing together.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_lane_id(void) {
+  return __builtin_gpu_lane_id();
+}
+
+// Returns the bit-mask of active threads in the current wavefront.
+_DEFAULT_FN_ATTRS static __inline__ uint64_t __gpu_lane_mask(void) {
+  return __builtin_gpu_lane_mask();
+}
+
+// Copies the value from the first active thread in the wavefront to the rest.
+_DEFAULT_FN_ATTRS static __inline__ uint32_t
+__gpu_read_first_lane_u32(uint64_t __lane_mask, uint32_t __x) {
+  return __builtin_gpu_read_first_lane_u32(__lane_mask, __x);
+}
+
+_DEFAULT_FN_ATTRS static __inline__ uint64_t __gpu_ballot(uint64_t __lane_mask,
+                                                          bool __x) {
+  return __builtin_gpu_ballot(__lane_mask, __x);
+}
+
+_DEFAULT_FN_ATTRS static __inline__ void __gpu_sync_threads(void) {
+  return __builtin_gpu_sync_threads();
+}
+
+_DEFAULT_FN_ATTRS static __inline__ void __gpu_sync_lane(uint64_t __lane_mask) {
+  return __builtin_gpu_sync_lane(__lane_mask);
+}
+
+_DEFAULT_FN_ATTRS static __inline__ uint32_t
+__gpu_shuffle_idx_u32(uint64_t __lane_mask, uint32_t __idx, uint32_t __x,
+                      uint32_t __width) {
+  return __builtin_gpu_shuffle_idx_u32(__lane_mask, __idx, __x, __width);
+}
+
+#endif
 
 #if defined(__NVPTX__)
-#include <nvptxintrin.h>
+#include <jc_nvptxintrin.h>
 #elif defined(__AMDGPU__)
-#include <amdgpuintrin.h>
-#elif defined(__SPIRV64__)
-#include <spirvintrin.h>
+#include <jc_amdgpuintrin.h>
 #elif !defined(_OPENMP)
 #error "This header is only meant to be used on GPU architectures."
+#endif
+
+#if JC_USE_COMPILER_BUILTINS
+
+_DEFAULT_FN_ATTRS [[noreturn]] static __inline__ void __gpu_exit(void) {
+  return __builtin_gpu_exit();
+}
+
+_DEFAULT_FN_ATTRS static __inline__ void __gpu_thread_suspend(void) {
+  return __builtin_gpu_thread_suspend();
+}
+
 #endif
 
 _Pragma("omp begin declare target device_type(nohost)");
@@ -72,6 +165,10 @@ _Pragma("omp begin declare variant match(device = {kind(gpu)})");
 #define __GPU_X_DIM 0
 #define __GPU_Y_DIM 1
 #define __GPU_Z_DIM 2
+
+#if 0 && defined(JC_USE_COMPILER_BUILTINS)
+// skip all of these
+#else
 
 // Returns the number of blocks in the requested dimension.
 _DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_blocks(int __dim) {
@@ -141,7 +238,7 @@ __gpu_is_first_in_lane(uint64_t __lane_mask) {
   return __gpu_lane_id() == __gpu_first_lane_id(__lane_mask);
 }
 
-// Copies the value from the first active thread to the rest.
+// Copies the value from the first active thread in the wavefront to the rest.
 _DEFAULT_FN_ATTRS static __inline__ uint64_t
 __gpu_read_first_lane_u64(uint64_t __lane_mask, uint64_t __x) {
   uint32_t __hi = (uint32_t)(__x >> 32ull);
@@ -167,7 +264,7 @@ __gpu_read_first_lane_f64(uint64_t __lane_mask, double __x) {
                                         __builtin_bit_cast(uint64_t, __x)));
 }
 
-// Shuffles the the lanes according to the given index.
+// Shuffles the lanes according to the given index.
 _DEFAULT_FN_ATTRS static __inline__ uint64_t
 __gpu_shuffle_idx_u64(uint64_t __lane_mask, uint32_t __idx, uint64_t __x,
                       uint32_t __width) {
@@ -179,7 +276,7 @@ __gpu_shuffle_idx_u64(uint64_t __lane_mask, uint32_t __idx, uint64_t __x,
          ((uint64_t)__gpu_shuffle_idx_u32(__mask, __idx, __lo, __width));
 }
 
-// Shuffles the the lanes according to the given index.
+// Shuffles the lanes according to the given index.
 _DEFAULT_FN_ATTRS static __inline__ float
 __gpu_shuffle_idx_f32(uint64_t __lane_mask, uint32_t __idx, float __x,
                       uint32_t __width) {
@@ -260,61 +357,7 @@ __DO_LANE_SUM(float, f32);    // float __gpu_lane_sum_f32(m, x)
 __DO_LANE_SUM(double, f64);   // double __gpu_lane_sum_f64(m, x)
 #undef __DO_LANE_SUM
 
-// Returns a bitmask marking all lanes that have the same value of __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_any_u32_impl(uint64_t __lane_mask, uint32_t __x) {
-  uint32_t __match_mask = 0;
-
-  bool __done = 0;
-  while (__gpu_ballot(__lane_mask, !__done)) {
-    if (!__done) {
-      uint32_t __first = __gpu_read_first_lane_u32(__lane_mask, __x);
-      if (__first == __x) {
-        __match_mask = __gpu_lane_mask();
-        __done = 1;
-      }
-    }
-  }
-  __gpu_sync_lane(__lane_mask);
-  return __match_mask;
-}
-
-// Returns a bitmask marking all lanes that have the same value of __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_any_u64_impl(uint64_t __lane_mask, uint64_t __x) {
-  uint64_t __match_mask = 0;
-
-  bool __done = 0;
-  while (__gpu_ballot(__lane_mask, !__done)) {
-    if (!__done) {
-      uint64_t __first = __gpu_read_first_lane_u64(__lane_mask, __x);
-      if (__first == __x) {
-        __match_mask = __gpu_lane_mask();
-        __done = 1;
-      }
-    }
-  }
-  __gpu_sync_lane(__lane_mask);
-  return __match_mask;
-}
-
-// Returns the current lane mask if every lane contains __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_all_u32_impl(uint64_t __lane_mask, uint32_t __x) {
-  uint32_t __first = __gpu_read_first_lane_u32(__lane_mask, __x);
-  uint64_t __ballot = __gpu_ballot(__lane_mask, __x == __first);
-  __gpu_sync_lane(__lane_mask);
-  return __ballot == __gpu_lane_mask() ? __gpu_lane_mask() : 0ull;
-}
-
-// Returns the current lane mask if every lane contains __x.
-_DEFAULT_FN_ATTRS static __inline__ uint64_t
-__gpu_match_all_u64_impl(uint64_t __lane_mask, uint64_t __x) {
-  uint64_t __first = __gpu_read_first_lane_u64(__lane_mask, __x);
-  uint64_t __ballot = __gpu_ballot(__lane_mask, __x == __first);
-  __gpu_sync_lane(__lane_mask);
-  return __ballot == __gpu_lane_mask() ? __gpu_lane_mask() : 0ull;
-}
+#endif
 
 _Pragma("omp end declare variant");
 _Pragma("omp end declare target");

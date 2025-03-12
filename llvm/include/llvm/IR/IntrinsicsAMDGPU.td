@@ -146,9 +146,21 @@ let TargetPrefix = "amdgcn" in {
 // ABI Special Intrinsics
 //===----------------------------------------------------------------------===//
 
+
 defm int_amdgcn_workitem_id : AMDGPUReadPreloadRegisterIntrinsic_xyz;
+
+// CGBuiltin handling can be skipped by changing to this
+// defm int_amdgcn_workitem_id : AMDGPUReadPreloadRegisterIntrinsic_xyz_named
+//                               <"__builtin_amdgcn_workitem_id">;
+
+
 defm int_amdgcn_workgroup_id : AMDGPUReadPreloadRegisterIntrinsic_xyz_named
                                <"__builtin_amdgcn_workgroup_id">;
+
+// TODO: Are the attributes right on grid_size? Turns into loads from dispatch packet
+// workgroup_size doesn't have an intrinsic, it turns into branches on code object and similar
+// however this upsets some clang tests...
+defm int_amdgcn_grid_size : AMDGPUReadPreloadRegisterIntrinsic_xyz /*_named<"__builtin_amdgcn_grid_size">*/;
 
 def int_amdgcn_dispatch_ptr :
   DefaultAttrsIntrinsic<[LLVMQualPointerType<4>], [],

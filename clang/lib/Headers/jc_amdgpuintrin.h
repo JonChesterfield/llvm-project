@@ -1,4 +1,4 @@
-//===-- amdgpuintrin.h - AMDGPU intrinsic functions -----------------------===//
+//===-- amdgpuintrin.h - AMDPGU intrinsic functions -----------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -13,8 +13,11 @@
 #error "This file is intended for AMDGPU targets or offloading to AMDGPU"
 #endif
 
-#ifndef __GPUINTRIN_H
-#error "Never use <amdgpuintrin.h> directly; include <gpuintrin.h> instead"
+#include <stdint.h>
+
+#if !defined(__cplusplus)
+_Pragma("push_macro(\"bool\")");
+#define bool _Bool
 #endif
 
 _Pragma("omp begin declare target device_type(nohost)");
@@ -29,6 +32,12 @@ _Pragma("omp begin declare variant match(device = {arch(amdgcn)})");
 
 // Attribute to declare a function as a kernel.
 #define __gpu_kernel __attribute__((amdgpu_kernel, visibility("protected")))
+
+// Defined in gpuintrin.h, used later in this file.
+_DEFAULT_FN_ATTRS static __inline__ uint64_t
+__gpu_read_first_lane_u64(uint64_t __lane_mask, uint64_t __x);
+
+#if !JC_USE_COMPILER_BUILTINS
 
 // Returns the number of workgroups in the 'x' dimension of the grid.
 _DEFAULT_FN_ATTRS static __inline__ uint32_t __gpu_num_blocks_x(void) {
@@ -135,32 +144,71 @@ _DEFAULT_FN_ATTRS static __inline__ void __gpu_sync_lane(uint64_t __lane_mask) {
 _DEFAULT_FN_ATTRS static __inline__ uint32_t
 __gpu_shuffle_idx_u32(uint64_t __lane_mask, uint32_t __idx, uint32_t __x,
                       uint32_t __width) {
-  uint32_t __lane = __idx + (__gpu_lane_id() & ~(__width - 1));
+  uint32_t id = __gpu_lane_id();
+  uint32_t __lane = __idx + (id & ~(__width - 1));
   return __builtin_amdgcn_ds_bpermute(__lane << 2, __x);
 }
+
+#endif // JC_USE_COMPILER_BUILTINS
+
+#if 0 && defined(JC_USE_COMPILER_BUILTINS)
+// skip all of these
+#else
 
 // Returns a bitmask marking all lanes that have the same value of __x.
 _DEFAULT_FN_ATTRS static __inline__ uint64_t
 __gpu_match_any_u32(uint64_t __lane_mask, uint32_t __x) {
-  return __gpu_match_any_u32_impl(__lane_mask, __x);
+  uint32_t __match_mask = 0;
+
+  bool __done = 0;
+  while (__gpu_ballot(__lane_mask, !__done)) {
+    if (!__done) {
+      uint32_t __first = __gpu_read_first_lane_u32(__lane_mask, __x);
+      if (__first == __x) {
+        __match_mask = __gpu_lane_mask();
+        __done = 1;
+      }
+    }
+  }
+  __gpu_sync_lane(__lane_mask);
+  return __match_mask;
 }
 
 // Returns a bitmask marking all lanes that have the same value of __x.
 _DEFAULT_FN_ATTRS static __inline__ uint64_t
 __gpu_match_any_u64(uint64_t __lane_mask, uint64_t __x) {
-  return __gpu_match_any_u64_impl(__lane_mask, __x);
+  uint64_t __match_mask = 0;
+
+  bool __done = 0;
+  while (__gpu_ballot(__lane_mask, !__done)) {
+    if (!__done) {
+      uint64_t __first = __gpu_read_first_lane_u64(__lane_mask, __x);
+      if (__first == __x) {
+        __match_mask = __gpu_lane_mask();
+        __done = 1;
+      }
+    }
+  }
+  __gpu_sync_lane(__lane_mask);
+  return __match_mask;
 }
 
 // Returns the current lane mask if every lane contains __x.
 _DEFAULT_FN_ATTRS static __inline__ uint64_t
 __gpu_match_all_u32(uint64_t __lane_mask, uint32_t __x) {
-  return __gpu_match_all_u32_impl(__lane_mask, __x);
+  uint32_t __first = __gpu_read_first_lane_u32(__lane_mask, __x);
+  uint64_t __ballot = __gpu_ballot(__lane_mask, __x == __first);
+  __gpu_sync_lane(__lane_mask);
+  return __ballot == __gpu_lane_mask() ? __gpu_lane_mask() : 0ull;
 }
 
 // Returns the current lane mask if every lane contains __x.
 _DEFAULT_FN_ATTRS static __inline__ uint64_t
 __gpu_match_all_u64(uint64_t __lane_mask, uint64_t __x) {
-  return __gpu_match_all_u64_impl(__lane_mask, __x);
+  uint64_t __first = __gpu_read_first_lane_u64(__lane_mask, __x);
+  uint64_t __ballot = __gpu_ballot(__lane_mask, __x == __first);
+  __gpu_sync_lane(__lane_mask);
+  return __ballot == __gpu_lane_mask() ? __gpu_lane_mask() : 0ull;
 }
 
 // Returns true if the flat pointer points to AMDGPU 'shared' memory.
@@ -174,6 +222,9 @@ _DEFAULT_FN_ATTRS static __inline__ bool __gpu_is_ptr_private(void *ptr) {
   return __builtin_amdgcn_is_private((void [[clang::address_space(0)]] *)((
       void [[clang::opencl_generic]] *)ptr));
 }
+#endif
+
+#if !JC_USE_COMPILER_BUILTINS
 
 // Terminates execution of the associated wavefront.
 _DEFAULT_FN_ATTRS [[noreturn]] static __inline__ void __gpu_exit(void) {
@@ -185,7 +236,13 @@ _DEFAULT_FN_ATTRS static __inline__ void __gpu_thread_suspend(void) {
   __builtin_amdgcn_s_sleep(2);
 }
 
+#endif
+
 _Pragma("omp end declare variant");
 _Pragma("omp end declare target");
+
+#if !defined(__cplusplus)
+_Pragma("pop_macro(\"bool\")");
+#endif
 
 #endif // __AMDGPUINTRIN_H
