@@ -2559,6 +2559,9 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
       B.addAttribute("aarch64_new_zt0");
   }
 
+  if (D->hasAttr<AlwaysSpecializeAttr>())
+    B.addAttribute(llvm::Attribute::AlwaysSpecialize);
+
   // Track whether we need to add the optnone LLVM attribute,
   // starting with the default for this optimization level.
   bool ShouldAddOptNone =
@@ -2964,7 +2967,7 @@ void CodeGenModule::SetFunctionAttributes(GlobalDecl GD, llvm::Function *F,
 
   if (!IsIncompleteFunction)
     SetLLVMFunctionAttributes(GD, getTypes().arrangeGlobalDeclaration(GD), F,
-                              IsThunk);
+                              IsThunk);  
 
   // Add the Returned attribute for "this", except for iOS 5 and earlier
   // where substantial code, including the libstdc++ dylib, was compiled with
@@ -2977,6 +2980,12 @@ void CodeGenModule::SetFunctionAttributes(GlobalDecl GD, llvm::Function *F,
            "unexpected this return");
     F->addParamAttr(0, llvm::Attribute::Returned);
   }
+
+  for (auto [Index, Param] : enumerate(FD->parameters()))
+    if (Param->hasAttrs())
+      for (auto *A : Param->getAttrs())
+        if (A->getKind() == attr::AlwaysSpecialize)
+          F->addParamAttr(Index, llvm::Attribute::AlwaysSpecialize);
 
   // Only a few attributes are set on declarations; these may later be
   // overridden by a definition.
